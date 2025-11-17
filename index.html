@@ -218,7 +218,7 @@
                     TODOS SLIDES
                 </h1>
                 <div class="flex items-center space-x-4">
-                    <button id="start-voice-btn" class="px-3 py-1 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 transition duration-300 disabled:bg-gray-600">
+                    <button id="start-voice-btn" class="px-3 py-1 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 transition duration-300 disabled:bg-gray-600" disabled>
                         <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
                         Iniciar Voz
                     </button>
@@ -420,14 +420,17 @@
                 const docRef = getPresentationDocRef();
                 try {
                     await setDoc(docRef, { index: index, updated: new Date().toISOString() }, { merge: true });
-                    console.log("Índice do slide atualizado (SYNC):", index);
+                    // Não precisa chamar updateUI aqui, o onSnapshot fará isso
+                    console.log("Índice do slide atualizado (SYNC) para:", index);
                 } catch (error) {
                     console.error("Erro ao atualizar o índice do slide no Firestore:", error);
+                    // Em caso de falha, atualiza localmente como fallback (menos ideal)
+                    updateUI(index); 
                 }
             } else {
                 // Modo Fallback (GitHub Pages/Local File)
                 updateUI(index);
-                console.log("Índice do slide atualizado (LOCAL):", index);
+                console.log("Índice do slide atualizado (LOCAL) para:", index);
             }
         }
 
@@ -521,8 +524,7 @@
         function initializeSpeechRecognition() {
             if (!('webkitSpeechRecognition' in window)) {
                 document.getElementById('voice-status').textContent = "ERRO: Reconhecimento de voz não suportado (use Chrome).";
-                document.getElementById('start-voice-btn').disabled = true;
-                return;
+                return; // Não desabilita o botão, mas mostra o erro
             }
 
             recognition = new webkitSpeechRecognition();
@@ -602,7 +604,7 @@
 
             // Event Listener para iniciar/parar o reconhecimento
             document.getElementById('start-voice-btn').addEventListener('click', () => {
-                if (recognition) {
+                if (recognition && currentSlideIndex < slidesData.length) {
                     try {
                         recognition.start();
                     } catch (e) {
@@ -682,6 +684,8 @@
             if (!isPresenterMode) {
                 initializeSpeechRecognition();
                 renderThumbnails(); // RENDERIZA A NOVA GRADE
+                // Habilita o botão Iniciar Voz, pois os slides padrão já estão carregados.
+                document.getElementById('start-voice-btn').disabled = false; 
             }
 
             // B. Tratamento de Falha do Firebase (GitHub Pages / Local File)
@@ -690,7 +694,6 @@
                  document.getElementById('voice-status').textContent = "Voz: Firebase ausente. Sincronização desativada.";
                  document.getElementById('voice-status').classList.remove('text-red-400');
                  document.getElementById('voice-status').classList.add('text-yellow-500');
-                 document.getElementById('start-voice-btn').disabled = false; // Permite iniciar a voz localmente
                  
                  updateUI(0); // Garante que o slide 0 seja exibido localmente
                  return; // Sai antes da tentativa de inicialização do Firebase
