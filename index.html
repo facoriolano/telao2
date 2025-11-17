@@ -15,7 +15,7 @@
       color: #ffffff;
     }
 
-    button, input[type="file"] {
+    button, input[type="file"], select {
       background-color: #1f1f1f;
       color: #f0f0f0;
       border: 1px solid #444;
@@ -24,7 +24,7 @@
       cursor: pointer;
     }
 
-    button:hover {
+    button:hover, select:hover {
       background-color: #333;
     }
 
@@ -93,6 +93,13 @@
   <button onclick="abrirTXT()">Abrir TXT</button>
 
   <div class="section">
+    <label for="slideSelect">Escolha um slide:</label>
+    <select id="slideSelect" onchange="selecionarSlide(this.value)">
+      <option value="">--</option>
+    </select>
+  </div>
+
+  <div class="section">
     <h2>Todos Slides</h2>
     <div id="todosSlides"></div>
   </div>
@@ -123,6 +130,7 @@
         const texto = e.target.result;
         slides = texto.split('---').map(s => s.trim()).filter(s => s.length > 0);
         mostrarMiniaturas(slides);
+        preencherDropdown(slides);
         mostrarSlideAtual(0);
         destacarMiniatura(0);
       };
@@ -144,6 +152,7 @@
         miniatura.onclick = () => {
           mostrarSlideAtual(index);
           destacarMiniatura(index);
+          document.getElementById('slideSelect').value = index;
         };
         container.appendChild(miniatura);
       });
@@ -160,8 +169,27 @@
     function destacarMiniatura(index) {
       const todas = document.querySelectorAll('.miniatura');
       todas.forEach((el, i) => {
-        el.classList.toggle('ativa', i === index);
+        el.classList.toggle('ativa', i === parseInt(index));
       });
+    }
+
+    function preencherDropdown(slides) {
+      const select = document.getElementById('slideSelect');
+      select.innerHTML = '<option value="">--</option>';
+      slides.forEach((slide, index) => {
+        const titulo = slide.split('\n')[0] || `Slide ${index + 1}`;
+        const option = document.createElement('option');
+        option.value = index;
+        option.text = `${index + 1}: ${titulo}`;
+        select.appendChild(option);
+      });
+    }
+
+    function selecionarSlide(index) {
+      if (index !== '') {
+        mostrarSlideAtual(parseInt(index));
+        destacarMiniatura(index);
+      }
     }
   </script>
 </body>
