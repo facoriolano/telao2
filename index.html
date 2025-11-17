@@ -10,15 +10,26 @@
 <body>
   <h1>Apresentador Automático</h1>
   <input type="file" id="fileInput" accept=".txt" />
-  <button onclick="startPresentation()">Iniciar Apresentação</button>
+  <button onclick="startPresentation()">Abrir TXT</button>
 
-  <div id="controls">
-    <button onclick="prevSlide()">⬅️</button>
-    <span id="slideIndicator">Slide 1</span>
-    <button onclick="nextSlide()">➡️</button>
+  <div id="mainLayout">
+    <!-- Miniaturas à esquerda -->
+    <div id="slideList">
+      <h2>Todos Slides</h2>
+      <div id="thumbnails"></div>
+    </div>
+
+    <!-- Área de apresentação à direita -->
+    <div id="slideDisplay">
+      <div id="currentSlideBox">
+        <h2>Slide Atual</h2>
+        <div id="slideAtual" class="slideBox"></div>
+      </div>
+      <div id="nextSlideBox">
+        <h2>Próximo Slide</h2>
+        <div id="slideProximo" class="slideBox"></div>
+      </div>
+    </div>
   </div>
-
-  <div id="thumbnails"></div>
-  <div id="slidePreview"></div>
 </body>
 </html>
