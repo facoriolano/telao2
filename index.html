@@ -7,42 +7,59 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { font-family: 'Inter', sans-serif; }
-    #presenter-screen { height: 100vh; width: 100vw; }
-    #presenter-content { white-space: pre-wrap; font-size: 60px; line-height: 1.3; }
-    .thumbnail-item { min-width: 160px; }
+    .slide-button { width: 48px; height: 48px; border-radius: 8px; }
+    .slide-button.active { border: 2px solid orange; background-color: #1f2937; }
+    .circle-btn { width: 48px; height: 48px; border-radius: 9999px; font-size: 24px; }
   </style>
 </head>
 <body class="bg-gray-950 text-gray-100">
 
-<div id="director-interface" class="p-6 max-w-4xl mx-auto bg-gray-900 rounded-xl shadow-2xl">
-  <h1 class="text-3xl font-bold mb-4 text-indigo-400">Modo Diretor</h1>
-  <p class="mb-6 text-gray-400">Carregue slides e controle por voz.</p>
-
-  <div class="mb-6 bg-gray-800 p-4 rounded">
-    <input type="file" id="file-input" accept=".txt" class="block w-full text-sm text-gray-300 file:bg-indigo-500 file:text-white file:rounded-full file:px-4 file:py-2"/>
-    <p class="text-xs text-gray-400 mt-2">Separe slides com linha em branco.</p>
+<div class="flex flex-col md:flex-row p-6 gap-6">
+  <!-- Grade de Slides -->
+  <div class="bg-gray-900 p-4 rounded-xl shadow-xl w-full md:w-1/3">
+    <h2 class="text-xl font-bold text-indigo-400 mb-4">Slides</h2>
+    <div id="slide-grid" class="grid grid-cols-5 gap-3"></div>
   </div>
 
-  <div class="flex gap-4 mb-6">
-    <button id="open-presenter-btn" class="px-6 py-3 bg-indigo-500 text-white rounded hover:bg-indigo-600">Abrir Tela do Apresentador</button>
-    <button id="start-voice-btn" class="px-6 py-3 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400" disabled>Iniciar Reconhecimento</button>
-  </div>
+  <!-- Painel de Navegação -->
+  <div class="bg-gray-900 p-6 rounded-xl shadow-xl w-full md:w-2/3 flex flex-col justify-between">
+    <div>
+      <h2 class="text-xl font-bold text-indigo-400 mb-2">SLIDE ATUAL</h2>
+      <div id="current-slide-box" class="bg-gray-800 p-4 rounded mb-6">
+        <h3 id="current-title" class="text-yellow-300 text-2xl font-bold mb-2">Carregando...</h3>
+        <p id="current-content" class="text-gray-200 text-lg">Aguardando conteúdo...</p>
+      </div>
 
-  <div class="bg-gray-800 p-4 rounded mb-6">
-    <p id="voice-status" class="text-red-400 font-medium mb-2">Reconhecimento de Voz: Desligado</p>
-    <p id="current-slide-info" class="text-white font-bold mb-1">Slide Atual: Carregando...</p>
-    <p id="expected-trigger" class="text-yellow-500 text-sm mb-1">Próximo gatilho: N/A</p>
-    <p id="last-transcript" class="text-sm bg-gray-700 p-2 rounded">Última Transcrição: Aguardando...</p>
-  </div>
+      <h2 class="text-xl font-bold text-indigo-400 mb-2">PRÓXIMO SLIDE</h2>
+      <div id="next-slide-box" class="bg-gray-800 p-4 rounded">
+        <h3 id="next-title" class="text-yellow-300 text-xl font-semibold mb-2">---</h3>
+        <p id="next-content" class="text-gray-400 text-sm">---</p>
+      </div>
+    </div>
 
-  <div id="thumbnails-container" class="flex flex-wrap gap-4 mb-6"></div>
-
-  <div class="flex gap-3">
-    <button id="prev-slide-btn" class="px-4 py-2 bg-gray-700 text-white rounded disabled:opacity-50" disabled>Anterior</button>
-    <button id="next-slide-btn" class="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50" disabled>Próximo</button>
+    <!-- Botões de Navegação -->
+    <div class="flex justify-center gap-6 mt-6">
+      <button id="prev-btn" class="circle-btn bg-gray-700 hover:bg-gray-600 text-white" disabled>←</button>
+      <button id="next-btn" class="circle-btn bg-blue-500 hover:bg-blue-600 text-white" disabled>→</button>
+    </div>
   </div>
 </div>
 
+<!-- Upload e Reconhecimento -->
+<div class="p-6 max-w-4xl mx-auto">
+  <div class="bg-gray-800 p-4 rounded mb-4">
+    <input type="file" id="file-input" accept=".txt" class="block w-full text-sm text-gray-300 file:bg-indigo-500 file:text-white file:rounded-full file:px-4 file:py-2"/>
+    <p class="text-xs text-gray-400 mt-2">Separe slides com linha em branco.</p>
+  </div>
+  <div class="flex gap-4">
+    <button id="start-voice-btn" class="px-6 py-3 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400" disabled>Iniciar Reconhecimento</button>
+    <button id="open-presenter-btn" class="px-6 py-3 bg-indigo-500 text-white rounded hover:bg-indigo-600">Abrir Tela do Apresentador</button>
+  </div>
+  <p id="voice-status" class="mt-4 text-sm text-red-400">Reconhecimento de Voz: Desligado</p>
+  <p id="last-transcript" class="text-sm text-gray-400 mt-2">Última Transcrição: ---</p>
+</div>
+
+<!-- Apresentador -->
 <div id="presenter-interface" class="hidden">
   <div id="presenter-screen" class="flex flex-col items-center justify-center p-10 text-white bg-black">
     <div class="max-w-6xl w-full">
@@ -67,27 +84,32 @@ function generateTrigger(text) {
 function updateUI(index) {
   currentSlideIndex = index;
   const slide = slidesData[index];
-  document.getElementById('current-slide-info')?.textContent = `Slide Atual: ${index+1} - ${slide.title}`;
-  document.getElementById('expected-trigger')?.textContent = slide.trigger ? `Próximo gatilho: "${slide.trigger}"` : "Fim";
+  const nextSlide = slidesData[index + 1] || { title: "---", content: "---" };
+
+  document.getElementById('current-title').textContent = slide.title;
+  document.getElementById('current-content').textContent = slide.content;
+  document.getElementById('next-title').textContent = nextSlide.title;
+  document.getElementById('next-content').textContent = nextSlide.content;
+
+  document.getElementById('prev-btn').disabled = (index === 0);
+  document.getElementById('next-btn').disabled = (index === slidesData.length - 1);
+
   document.getElementById('slide-title').textContent = slide.title;
   document.getElementById('presenter-content').textContent = slide.content;
-  document.getElementById('slide-index-display').textContent = `Slide ${index+1} de ${slidesData.length}`;
-  renderThumbnails();
-  document.getElementById('prev-slide-btn').disabled = (index === 0);
-  document.getElementById('next-slide-btn').disabled = (index === slidesData.length - 1);
+  document.getElementById('slide-index-display').textContent = `Slide ${index + 1} de ${slidesData.length}`;
+
+  renderSlideGrid();
 }
 
-function renderThumbnails() {
-  const container = document.getElementById('thumbnails-container');
-  container.innerHTML = '';
+function renderSlideGrid() {
+  const grid = document.getElementById('slide-grid');
+  grid.innerHTML = '';
   slidesData.forEach((s, i) => {
-    const thumb = document.createElement('div');
-    thumb.className = `thumbnail-item p-3 border-2 rounded cursor-pointer ${i===currentSlideIndex ? 'border-indigo-400' : 'border-gray-700'}`;
-    thumb.innerHTML = `<h3 class="text-sm font-semibold text-white">${i+1}. ${s.title}</h3>
-                       <p class="text-xs text-gray-400">${s.content.substring(0,40)}...</p>
-                       <p class="text-xs text-yellow-500">${s.trigger || 'FIM'}</p>`;
-    thumb.onclick = () => updateUI(i);
-    container.appendChild(thumb);
+    const btn = document.createElement('button');
+    btn.className = `slide-button bg-gray-700 text-white text-sm font-bold ${i === currentSlideIndex ? 'active' : ''}`;
+    btn.textContent = String(i + 1).padStart(2, '0');
+    btn.onclick = () => updateUI(i);
+    grid.appendChild(btn);
   });
 }
 
@@ -129,27 +151,4 @@ document.getElementById('file-input').addEventListener('change', (event) => {
     updateUI(0);
     document.getElementById('start-voice-btn').disabled = false;
   };
-  reader.readAsText(file);
-});
-
-document.getElementById('start-voice-btn').addEventListener('click', () => {
-  if (!recognition) initializeSpeechRecognition();
-  recognition.start();
-});
-
-document.getElementById('prev-slide-btn').addEventListener('click', () => {
-  if (currentSlideIndex > 0) updateUI(currentSlideIndex - 1);
-});
-document.getElementById('next-slide-btn').addEventListener('click', () => {
-  if (currentSlideIndex < slidesData.length - 1) updateUI(currentSlideIndex + 1);
-});
-
-document.getElementById('open-presenter-btn').addEventListener('click', () => {
-  const presenterUrl = window.location.href.split('?')[0] + '?mode=presenter';
-  window.open(presenterUrl, 'PresenterScreen', 'width=800,height=600,resizable=yes');
-});
-
-window.addEventListener('load', () => {
-  if (isPresenterMode) {
-    document.getElementById('presenter-interface').classList.remove('hidden');
-    document.getElementById('director-interface').class
+  reader.read
