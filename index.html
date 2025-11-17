@@ -58,11 +58,17 @@
             gap: 1rem;
         }
         
-        /* Otimização de Slides */
+        /* Otimização de Slides - MODO APRESENTADOR (TELA CHEIA E LIMPA) */
         #presenter-interface {
              /* Esconde a barra de título do browser o máximo possível na nova janela */
-             padding-top: 0;
-             margin-top: -10px; /* Truque para esconder um pouco mais */
+             padding: 0 !important;
+             margin: 0 !important;
+             overflow: hidden;
+             position: fixed;
+             top: 0;
+             left: 0;
+             width: 100vw;
+             height: 100vh;
         }
         #presenter-screen {
             height: 100vh;
@@ -72,31 +78,32 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            flex-direction: column; /* Para alinhar título e conteúdo */
+            
+            /* Adiciona um padding relativo para garantir a margem de segurança */
+            padding: 5vh 8vw; 
+            box-sizing: border-box;
         }
-        #slide-container {
-             /* Define o container para o formato 16:9 e centraliza o conteúdo */
-            aspect-ratio: 16 / 9;
-            width: 80%; /* Ajuste para ter margens */
-            max-width: 1200px;
-            background-color: var(--color-card-light); 
-            border-radius: 1rem;
-            padding: 5%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-        }
+        
+        /* Removido o #slide-container e seus estilos de borda/sombra para tela cheia */
 
         #slide-title {
             color: var(--color-primary); /* Título na cor de destaque */
+            font-size: 5vw; /* Título responsivo */
+            font-weight: 800;
+            margin-bottom: 5vh;
+            text-align: center;
+            max-width: 100%;
         }
         #presenter-content {
             color: #E0E0E0; /* Texto em cinza claro */
+            text-align: center;
+            font-size: 2.5vw; /* Conteúdo responsivo */
+            max-width: 100%;
+            line-height: 1.4;
         }
 
-        /* O indicador de slide foi removido da tela do apresentador, mas o ID do elemento 
-           original foi mantido no JS para evitar erros de referência no updateUI */
+        /* O indicador de slide foi removido da tela do apresentador */
         #slide-index-display {
             display: none; 
         }
@@ -314,17 +321,17 @@
         </div>
     </div>
 
-    <!-- Interface do Apresentador (Corrigida) -->
+    <!-- Interface do Apresentador (Corrigida e Limpa) -->
     <div id="presenter-interface" class="hidden">
         <div id="presenter-screen" class="p-10 text-white">
-            <div id="slide-container">
-                <!-- REMOVIDO: O elemento de exibição do índice do slide (slide-index-display) foi removido visualmente -->
-                <p id="slide-index-display" class="text-3xl font-light text-primary mb-6 opacity-70" style="display: none;"></p>
-                <h1 id="slide-title" class="text-7xl font-extrabold mb-10 text-center transition-opacity duration-300">Carregando Apresentação...</h1>
-                <div id="presenter-content" class="text-gray-200 text-center text-2xl transition-opacity duration-300">
-                    Aguardando sincronização do Diretor.
-                </div>
+            <!-- Título do Slide (Sem prefixos como 'Slide X:') -->
+            <h1 id="slide-title" class="text-7xl font-extrabold text-center transition-opacity duration-300">Carregando Apresentação...</h1>
+            <!-- Conteúdo do Slide -->
+            <div id="presenter-content" class="text-gray-200 text-center text-2xl transition-opacity duration-300">
+                Aguardando sincronização do Diretor.
             </div>
+            <!-- O elemento slide-index-display está totalmente oculto -->
+            <p id="slide-index-display" style="display: none;"></p>
         </div>
     </div>
 
@@ -346,11 +353,12 @@
 
         // Dados de slides Padrão
         const DEFAULT_SLIDES = [
+            // Corrigido para remover 'Slide X:' do título, mantendo apenas o conteúdo
             { title: "Início: Introdução à Apresentação", content: "Olá a todos! Hoje vamos usar a voz para interagir com o software. Este é um modo diretor/apresentador. Vamos aprender como funciona.", trigger: "como funciona." },
-            { title: "Slide 2: O Desafio da Transição", content: "A transição manual de slides exige um operador. Queremos que o foco seja 100% no conteúdo, na mensagem, e no palestrante. A tecnologia está aqui para ajudar.", trigger: "aqui para ajudar." },
-            { title: "Slide 3: Tecnologia de Reconhecimento", content: "Usamos a API de Fala (Web Speech API) para escutar. O reconhecimento é contínuo e busca uma frase de gatilho, as últimas 4 palavras. A precisão é fundamental.", trigger: "é fundamental." },
-            { title: "Slide 4: A Chave para a Automação", content: "Ao detectar a frase de gatilho, o sistema atualiza o índice do slide via Firestore. O Apresentador vê a mudança em tempo real. Uma sincronização perfeita. Próximo slide em 3, 2, 1.", trigger: "slide em 3, 2, 1." },
-            { title: "Slide 5: Obrigado!", content: "Esperamos que este protótipo demonstre o poder da automação por voz em apresentações. Obrigado a todos pela atenção!", trigger: "" } // Último slide não tem gatilho
+            { title: "O Desafio da Transição", content: "A transição manual de slides exige um operador. Queremos que o foco seja 100% no conteúdo, na mensagem, e no palestrante. A tecnologia está aqui para ajudar.", trigger: "aqui para ajudar." },
+            { title: "Tecnologia de Reconhecimento", content: "Usamos a API de Fala (Web Speech API) para escutar. O reconhecimento é contínuo e busca uma frase de gatilho, as últimas 4 palavras. A precisão é fundamental.", trigger: "é fundamental." },
+            { title: "A Chave para a Automação", content: "Ao detectar a frase de gatilho, o sistema atualiza o índice do slide via Firestore. O Apresentador vê a mudança em tempo real. Uma sincronização perfeita. Próximo slide em 3, 2, 1.", trigger: "slide em 3, 2, 1." },
+            { title: "Obrigado!", content: "Esperamos que este protótipo demonstre o poder da automação por voz em apresentações. Obrigado a todos pela atenção!", trigger: "" } // Último slide não tem gatilho
         ];
 
         // Estado Global
@@ -422,7 +430,7 @@
                 });
             }
 
-            // Lógica para o Modo Apresentador
+            // Lógica para o Modo Apresentador (TELÃO)
             if (document.getElementById('presenter-interface').style.display !== 'none') {
                 const titleEl = document.getElementById('slide-title');
                 const contentEl = document.getElementById('presenter-content');
@@ -433,9 +441,11 @@
                 
                 setTimeout(() => {
                     // Atualiza o conteúdo após o fade-out
-                    titleEl.textContent = currentSlide.title;
+                    // CORRIGIDO: O título agora vem limpo, sem o prefixo de slide.
+                    titleEl.textContent = currentSlide.title; 
                     contentEl.textContent = currentSlide.content;
-                    // O elemento slide-index-display está oculto por CSS, mas atualizamos seu conteúdo no JS para evitar erros
+                    
+                    // O elemento slide-index-display continua oculto
                     document.getElementById('slide-index-display').textContent = `Slide ${safeIndex + 1} de ${slidesData.length}`; 
 
                     // Aplica a transição de fade-in
@@ -488,7 +498,11 @@
                  try {
                      const parsedSlides = JSON.parse(storedSlides);
                      if (Array.isArray(parsedSlides) && parsedSlides.length > 0) {
-                         slidesData = parsedSlides;
+                         // Garante que o título do slide carregado também esteja limpo (sem prefixos desnecessários)
+                         slidesData = parsedSlides.map(slide => ({
+                            ...slide,
+                            title: slide.title.replace(/^Slide \d+:\s*/, '').trim()
+                         }));
                          console.log("Slides carregados do LocalStorage.");
                          return;
                      }
@@ -541,7 +555,9 @@
                 const newSlidesData = blocks.map((content, index) => {
                     const trimmedContent = content.trim();
                     const firstLine = trimmedContent.split('\n')[0].trim();
-                    const title = firstLine.length < 50 ? firstLine : `Slide Personalizado ${index + 1}`;
+                    // Garante que o título não contenha prefixos indesejados
+                    const cleanTitle = firstLine.replace(/^Slide \d+:\s*/, '').trim(); 
+                    const title = cleanTitle.length < 50 ? cleanTitle : `Slide Personalizado ${index + 1}`;
                     // Gera o gatilho para todos os slides, exceto o último
                     const trigger = (index < blocks.length - 1) ? generateTrigger(trimmedContent) : "";
                     
