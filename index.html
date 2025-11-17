@@ -16,7 +16,7 @@
       text-align: center;
     }
 
-    button, input[type="file"], select {
+    button, input[type="file"] {
       background-color: #1f1f1f;
       color: #f0f0f0;
       border: 1px solid #444;
@@ -25,7 +25,7 @@
       cursor: pointer;
     }
 
-    button:hover, select:hover {
+    button:hover {
       background-color: #333;
     }
 
@@ -109,13 +109,6 @@
   <input type="file" id="fileInput" accept=".txt">
   <button onclick="abrirTXT()">Abrir TXT</button>
 
-  <div class="section">
-    <label for="slideSelect">Escolha um slide:</label>
-    <select id="slideSelect" onchange="selecionarSlide(this.value)">
-      <option value="">--</option>
-    </select>
-  </div>
-
   <div class="container">
     <div class="col-esquerda">
       <h2>Todos Slides</h2>
@@ -151,7 +144,6 @@
         const texto = e.target.result;
         slides = texto.split('---').map(s => s.trim()).filter(s => s.length > 0);
         mostrarMiniaturas(slides);
-        preencherDropdown(slides);
         mostrarSlideAtual(0);
         destacarMiniatura(0);
       };
@@ -173,7 +165,7 @@
         miniatura.onclick = () => {
           mostrarSlideAtual(index);
           destacarMiniatura(index);
-          document.getElementById('slideSelect').value = index;
+          abrirPopup(slide);
         };
         container.appendChild(miniatura);
       });
@@ -194,22 +186,31 @@
       });
     }
 
-    function preencherDropdown(slides) {
-      const select = document.getElementById('slideSelect');
-      select.innerHTML = '<option value="">--</option>';
-      slides.forEach((slide, index) => {
-        const titulo = slide.split('\n')[0] || `Slide ${index + 1}`;
-        const option = document.createElement('option');
-        option.value = index;
-        option.text = `${index + 1}: ${titulo}`;
-        select.appendChild(option);
-      });
-    }
-
-    function selecionarSlide(index) {
-      if (index !== '') {
-        mostrarSlideAtual(parseInt(index));
-        destacarMiniatura(index);
+    function abrirPopup(texto) {
+      const novaJanela = window.open('', '', 'width=600,height=400');
+      if (novaJanela) {
+        novaJanela.document.write(`
+          <html>
+            <head>
+              <title>Slide Atual</title>
+              <style>
+                body {
+                  background-color: #121212;
+                  color: #f0f0f0;
+                  font-family: Arial, sans-serif;
+                  padding: 20px;
+                }
+              </style>
+            </head>
+            <body>
+              <h2>Slide Atual</h2>
+              <pre>${texto}</pre>
+            </body>
+          </html>
+        `);
+        novaJanela.document.close();
+      } else {
+        alert('Pop-up bloqueado. Ative pop-ups para visualizar o slide.');
       }
     }
   </script>
