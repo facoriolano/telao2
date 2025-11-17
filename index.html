@@ -1,192 +1,161 @@
-<!--
-  Aplicativo Web para gerar slides a partir de um texto,
-  com ajuste automático de fonte para 60px e divisão em slides necessários.
-  Usa Tailwind CSS para estilização e JavaScript para a lógica de divisão.
--->
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerador de Slides Automático</title>
-    <!-- Carrega Tailwind CSS para estilização rápida e responsiva -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        /* Define a fonte Inter como padrão */
-        :root {
-            font-family: 'Inter', sans-serif;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Apresentação por Voz</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+    body { font-family: 'Inter', sans-serif; background-color: #1A103A; }
 
-        /* Estilo da área de visualização do slide (simulação 16:9) */
-        .slide-container {
-            width: 100%;
-            padding-top: 56.25%; /* 16:9 Aspect Ratio (proporção de tela larga) */
-            position: relative;
-            overflow: hidden;
-            border: 2px solid #3b82f6;
-            background-color: #ffffff;
-            border-radius: 0.75rem;
-        }
+    :root {
+      --color-primary: #fcd34d;
+      --color-background: #1A103A;
+    }
 
-        /* Estilo do conteúdo do slide: Aqui definimos a fonte 60px! */
-        .slide-content {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center; /* Centraliza verticalmente */
-            justify-content: center; /* Centraliza horizontalmente */
-            padding: 5%; /* Espaçamento interno */
-            font-size: 60px; /* Tamanho da fonte conforme solicitado */
-            line-height: 1.2;
-            text-align: center;
-        }
+    #presenter-screen {
+      height: 100vh;
+      width: 100vw;
+      background-color: var(--color-background);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 5vh 8vw;
+      box-sizing: border-box;
+    }
 
-        /* Classe para texto que cabe em 60px */
-        .text-60px {
-             font-size: 60px;
-        }
+    #slide-title {
+      font-size: 60px;
+      color: var(--color-primary);
+      font-weight: 800;
+      margin-bottom: 5vh;
+      text-align: center;
+      max-width: 100%;
+    }
 
-        /* Estilo para lista de slides (para melhor visualização) */
-        .slides-output > div {
-            margin-bottom: 2rem;
-        }
-    </style>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'primary': '#3b82f6',
-                        'secondary': '#10b981',
-                    }
-                }
-            }
-        }
-
-        // Variáveis globais (não usadas para persistência, mas mantidas para compatibilidade)
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-slide-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        /**
-         * Gera os slides dividindo o texto de entrada.
-         * A divisão é feita com base em uma heurística para garantir que o texto em 60px caiba.
-         */
-        function generateSlides() {
-            const inputText = document.getElementById('textInput').value.trim();
-            const outputContainer = document.getElementById('slidesOutput');
-
-            // Limpa o output anterior
-            outputContainer.innerHTML = '';
-
-            if (!inputText) {
-                outputContainer.innerHTML = '<p class="text-gray-500">Por favor, insira o texto para gerar os slides.</p>';
-                return;
-            }
-
-            // 1. Pré-processamento: Divide o texto em unidades de frase/linha.
-            let lines = inputText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-
-            // 2. Quebrar linhas muito longas (se a linha exceder ~60 caracteres, ela é contada como mais de uma "linha lógica")
-            const MAX_CHARS_PER_LOGICAL_LINE = 60;
-            const processedLines = [];
-            lines.forEach(line => {
-                if (line.length <= MAX_CHARS_PER_LOGICAL_LINE) {
-                    processedLines.push(line);
-                } else {
-                    // Tenta quebrar a linha longa em pedaços menores, preservando palavras
-                    const words = line.split(' ');
-                    let currentChunk = '';
-
-                    words.forEach(word => {
-                        // Se adicionar a palavra for exceder o limite, começa um novo pedaço
-                        if ((currentChunk + ' ' + word).length > MAX_CHARS_PER_LOGICAL_LINE && currentChunk.length > 0) {
-                            processedLines.push(currentChunk.trim());
-                            currentChunk = word; // Começa um novo pedaço com a palavra atual
-                        } else {
-                            // Adiciona a palavra ao pedaço atual
-                            currentChunk += (currentChunk.length > 0 ? ' ' : '') + word;
-                        }
-                    });
-                    if (currentChunk.length > 0) {
-                        processedLines.push(currentChunk.trim());
-                    }
-                }
-            });
-
-            // 3. Heurística de Slides: Máximo de 6 linhas lógicas por slide.
-            const MAX_LINES_PER_SLIDE = 6;
-            let currentSlideContent = [];
-            let slideCounter = 1;
-
-            const createSlide = (content, index) => {
-                // Junta as linhas com <br> para quebrar o texto no slide
-                const textHtml = content.map(p => `<span>${p}</span>`).join('<br>');
-                const slideHtml = `
-                    <div class="slide-item bg-white shadow-xl p-4 rounded-xl">
-                        <h2 class="text-xl font-bold mb-3 text-primary">Slide ${index}</h2>
-                        <div class="slide-container">
-                            <div class="slide-content text-60px flex flex-col justify-center items-center">
-                                ${textHtml}
-                            </div>
-                        </div>
-                    </div>
-                `;
-                outputContainer.innerHTML += slideHtml;
-            };
-
-            for (let i = 0; i < processedLines.length; i++) {
-                currentSlideContent.push(processedLines[i]);
-
-                // Se o slide atingiu o limite de linhas OU for a última linha
-                if (currentSlideContent.length >= MAX_LINES_PER_SLIDE || i === processedLines.length - 1) {
-                    // Cria o slide com o conteúdo acumulado
-                    if (currentSlideContent.length > 0) {
-                        createSlide(currentSlideContent, slideCounter);
-                        slideCounter++;
-                        currentSlideContent = []; // Reinicia para o próximo slide
-                    }
-                }
-            }
-
-            // Atualiza a contagem de slides
-            document.getElementById('slideCount').textContent = slideCounter > 1 ? slideCounter - 1 : 0;
-        }
-    </script>
+    #presenter-content {
+      font-size: 60px;
+      color: #E0E0E0;
+      text-align: center;
+      max-width: 100%;
+      line-height: 1.4;
+    }
+  </style>
 </head>
-<body class="bg-gray-100 p-8">
+<body class="text-white">
 
-    <div class="max-w-4xl mx-auto">
-        <h1 class="text-3xl font-extrabold text-gray-800 mb-6 border-b-4 border-primary pb-2">
-            Gerador de Slides com Ajuste Automático (60px)
-        </h1>
+<!-- Modo Diretor -->
+<div class="p-6 max-w-4xl mx-auto">
+  <h1 class="text-2xl font-bold text-yellow-400 mb-4">Modo Diretor</h1>
+  <input type="file" id="file-input" accept=".txt" class="mb-4 text-sm text-gray-300 file:bg-yellow-400 file:text-black file:rounded-full file:px-4 file:py-2"/>
+  <div class="flex gap-4 mb-4">
+    <button id="start-voice-btn" class="px-4 py-2 bg-green-600 rounded disabled:bg-gray-600" disabled>Iniciar Voz</button>
+    <button id="open-presenter-btn" class="px-4 py-2 bg-gray-500 rounded">Abrir Tela do Apresentador</button>
+  </div>
+  <p id="voice-status" class="text-sm text-red-400 mb-2">Voz: Desligado</p>
+  <p id="last-transcript" class="text-sm text-gray-400 mb-4">Transcrição: ---</p>
+  <div id="slide-grid" class="grid grid-cols-6 gap-4"></div>
+</div>
 
-        <div class="bg-white p-6 rounded-xl shadow-lg mb-8">
-            <p class="text-gray-600 mb-4">
-                Cole o seu texto abaixo. O sistema irá definir o tamanho da fonte para <span class="font-bold text-primary">60px</span> e
-                dividir automaticamente o conteúdo em slides, garantindo a legibilidade.
-            </p>
-            <textarea id="textInput" rows="10" class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 transition duration-150 ease-in-out" placeholder="Insira seu texto longo aqui. O texto será quebrado em pedaços de no máximo 6 linhas por slide, com a fonte ajustada para 60px."></textarea>
-            <button onclick="generateSlides()" class="mt-4 w-full md:w-auto px-6 py-3 bg-primary text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-150 ease-in-out transform hover:scale-[1.01]">
-                Gerar Slides Automaticamente
-            </button>
-        </div>
+<!-- Modo Apresentador -->
+<div id="presenter-interface" class="hidden">
+  <div id="presenter-screen">
+    <h1 id="slide-title">Carregando...</h1>
+    <div id="presenter-content">Aguardando sincronização...</div>
+  </div>
+</div>
 
-        <div class="mb-6">
-            <h2 class="text-2xl font-bold text-gray-800">Visualização dos Slides (<span id="slideCount">0</span> Slides Gerados)</h2>
-            <p class="text-sm text-gray-500 mt-1">
-                <span class="font-bold">Heurística utilizada:</span> Máximo de 6 "linhas lógicas" curtas (aprox. 60 caracteres) por slide para garantir o tamanho de 60px.
-            </p>
-        </div>
+<script>
+let slidesData = [];
+let currentSlideIndex = 0;
+let recognition = null;
+const isPresenterMode = window.location.search.includes('mode=presenter');
 
-        <div id="slidesOutput" class="slides-output grid grid-cols-1 gap-6">
-            <!-- Slides gerados aparecerão aqui -->
-            <p class="text-gray-500 text-center">Nenhum slide gerado ainda.</p>
-        </div>
+function generateTrigger(text) {
+  const words = text.replace(/[^\p{L}\s]/gu, "").trim().split(/\s+/);
+  return words.slice(-4).join(" ") + ".";
+}
 
-    </div>
+function updateUI(index) {
+  currentSlideIndex = index;
+  const slide = slidesData[index];
+  document.getElementById('slide-title').textContent = slide.title;
+  document.getElementById('presenter-content').textContent = slide.content;
+  renderSlideGrid();
+}
 
+function renderSlideGrid() {
+  const grid = document.getElementById('slide-grid');
+  grid.innerHTML = '';
+  slidesData.forEach((s, i) => {
+    const btn = document.createElement('div');
+    btn.className = `p-2 rounded bg-gray-800 cursor-pointer ${i === currentSlideIndex ? 'border-2 border-yellow-400' : ''}`;
+    btn.innerHTML = `<div class="font-bold">${String(i + 1).padStart(2, '0')}</div>
+                     <div class="text-sm">${s.title}</div>`;
+    btn.onclick = () => updateUI(i);
+    grid.appendChild(btn);
+  });
+}
+
+function initializeSpeechRecognition() {
+  if (!('webkitSpeechRecognition' in window)) {
+    document.getElementById('voice-status').textContent = "ERRO: Navegador não suporta reconhecimento de voz.";
+    return;
+  }
+  recognition = new webkitSpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = false;
+  recognition.lang = 'pt-BR';
+
+  recognition.onstart = () => document.getElementById('voice-status').textContent = "Voz: ATIVA";
+  recognition.onend = () => document.getElementById('voice-status').textContent = "Voz: Desligado";
+  recognition.onresult = (event) => {
+    const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
+    document.getElementById('last-transcript').textContent = `Transcrição: "${transcript}"`;
+    const nextSlideIndex = currentSlideIndex + 1;
+    const expectedTrigger = slidesData[nextSlideIndex]?.trigger?.toLowerCase().trim();
+    if (expectedTrigger && transcript.includes(expectedTrigger)) {
+      updateUI(nextSlideIndex);
+    }
+  };
+}
+
+document.getElementById('file-input').addEventListener('change', (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const text = e.target.result;
+    const blocks = text.split(/\n\s*\n/).filter(block => block.trim().length > 0);
+    slidesData = blocks.map((content, i) => {
+      const title = content.split('\n')[0].trim();
+      const trigger = (i < blocks.length - 1) ? generateTrigger(content) : "";
+      return { title, content: content.trim(), trigger };
+    });
+    updateUI(0);
+    document.getElementById('start-voice-btn').disabled = true;
+    if (!isPresenterMode) document.getElementById('start-voice-btn').disabled = false;
+  };
+  reader.readAsText(file);
+});
+
+document.getElementById('start-voice-btn').addEventListener('click', () => {
+  if (!recognition) initializeSpeechRecognition();
+  recognition.start();
+});
+
+document.getElementById('open-presenter-btn').addEventListener('click', () => {
+  const presenterUrl = window.location.href.split('?')[0] + '?mode=presenter';
+  window.open(presenterUrl, 'PresenterScreen', 'width=800,height=600,resizable=yes');
+});
+
+window.addEventListener('load', () => {
+  if (isPresenterMode) {
+    document.getElementById('presenter-interface').classList.remove('hidden');
+  }
+});
+</script>
 </body>
 </html>
