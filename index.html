@@ -1,35 +1,119 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
   <title>Apresentador Automático</title>
-  <link rel="stylesheet" href="style.css" />
-  <script src="script.js" defer></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+
+    h1 {
+      text-align: center;
+    }
+
+    #fileInput {
+      margin-bottom: 10px;
+    }
+
+    #todosSlides {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      border: 1px solid #ccc;
+      padding: 10px;
+      min-height: 100px;
+      background-color: #f0f0f0;
+    }
+
+    .miniatura {
+      border: 1px solid #999;
+      padding: 8px;
+      background-color: #fff;
+      cursor: pointer;
+      width: 150px;
+      height: 100px;
+      overflow: hidden;
+      font-size: 12px;
+      box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .slideBox {
+      border: 1px solid #ccc;
+      padding: 10px;
+      min-height: 100px;
+      margin-top: 10px;
+      background-color: #fff;
+    }
+
+    .section {
+      margin-top: 20px;
+    }
+  </style>
 </head>
 <body>
   <h1>Apresentador Automático</h1>
-  <input type="file" id="fileInput" accept=".txt" />
-  <button onclick="startPresentation()">Abrir TXT</button>
 
-  <div id="mainLayout">
-    <!-- Miniaturas à esquerda -->
-    <div id="slideList">
-      <h2>Todos Slides</h2>
-      <div id="thumbnails"></div>
-    </div>
+  <input type="file" id="fileInput" accept=".txt">
+  <button onclick="abrirTXT()">Abrir TXT</button>
 
-    <!-- Área de apresentação à direita -->
-    <div id="slideDisplay">
-      <div id="currentSlideBox">
-        <h2>Slide Atual</h2>
-        <div id="slideAtual" class="slideBox"></div>
-      </div>
-      <div id="nextSlideBox">
-        <h2>Próximo Slide</h2>
-        <div id="slideProximo" class="slideBox"></div>
-      </div>
-    </div>
+  <div class="section">
+    <h2>Todos Slides</h2>
+    <div id="todosSlides"></div>
   </div>
+
+  <div class="section">
+    <h2>Slide Atual</h2>
+    <div id="slideAtual" class="slideBox"></div>
+  </div>
+
+  <div class="section">
+    <h2>Próximo Slide</h2>
+    <div id="proximoSlide" class="slideBox"></div>
+  </div>
+
+  <script>
+    let slides = [];
+
+    function abrirTXT() {
+      const fileInput = document.getElementById('fileInput');
+      const file = fileInput.files[0];
+      if (!file) {
+        alert('Selecione um arquivo .txt primeiro.');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const texto = e.target.result;
+        slides = texto.split('---').map(s => s.trim()).filter(s => s.length > 0);
+        mostrarMiniaturas(slides);
+        mostrarSlideAtual(0);
+      };
+      reader.readAsText(file);
+    }
+
+    function mostrarMiniaturas(slides) {
+      const container = document.getElementById('todosSlides');
+      container.innerHTML = '';
+
+      slides.forEach((slide, index) => {
+        const miniatura = document.createElement('div');
+        miniatura.className = 'miniatura';
+        miniatura.innerText = slide;
+        miniatura.onclick = () => mostrarSlideAtual(index);
+        container.appendChild(miniatura);
+      });
+    }
+
+    function mostrarSlideAtual(index) {
+      const atual = document.getElementById('slideAtual');
+      const proximo = document.getElementById('proximoSlide');
+
+      atual.innerText = slides[index] || '';
+      proximo.innerText = slides[index + 1] || '(Fim da apresentação)';
+    }
+  </script>
 </body>
 </html>
