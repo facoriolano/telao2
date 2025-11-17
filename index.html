@@ -29,10 +29,11 @@
             display: grid;
             grid-template-columns: repeat(5, 1fr) 280px; /* 5 Colunas de Miniaturas + 1 Coluna Lateral */
             grid-template-rows: auto 1fr auto; /* Cabeçalho, Conteúdo, Rodapé */
-            height: calc(100vh - 2rem);
+            height: calc(100vh - 1rem); /* Ajustado para melhor visualização */
             gap: 1rem;
             max-width: 1400px;
             margin: auto;
+            padding: 1rem;
         }
 
         #director-header {
@@ -61,8 +62,26 @@
             height: 100vh;
             width: 100vw;
             overflow: hidden;
-            background-color: var(--color-card-light); /* Cor de fundo do slide */
+            background-color: var(--color-background); /* Fundo escuro total */
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
+        #slide-container {
+             /* Define o container para o formato 16:9 e centraliza o conteúdo */
+            aspect-ratio: 16 / 9;
+            width: 80%; /* Ajuste para ter margens */
+            max-width: 1200px;
+            background-color: var(--color-card-light); 
+            border-radius: 1rem;
+            padding: 5%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
         #slide-title {
             color: var(--color-primary); /* Título na cor de destaque */
         }
@@ -206,11 +225,11 @@
     </style>
 </head>
 
-<body class="min-h-screen text-gray-100 p-4">
+<body class="min-h-screen text-gray-100">
 
     <!-- Interface do Diretor (Redesenhada) -->
     <div id="director-interface" class="hidden h-full">
-        <div id="director-main-grid" class="bg-custom-dark rounded-2xl shadow-xl p-4">
+        <div id="director-main-grid" class="bg-custom-dark rounded-2xl shadow-xl">
             
             <!-- 1. HEADER -->
             <div id="director-header" class="flex justify-between items-center pb-3 border-b border-gray-700 mb-4">
@@ -286,11 +305,11 @@
 
     <!-- Interface do Apresentador (Mantida a funcionalidade, cores ajustadas) -->
     <div id="presenter-interface" class="hidden">
-        <div id="presenter-screen" class="flex flex-col items-center justify-center p-10 text-white">
-            <div class="max-w-6xl w-full p-10 rounded-xl">
+        <div id="presenter-screen" class="p-10 text-white">
+            <div id="slide-container">
                 <p id="slide-index-display" class="text-3xl font-light text-primary mb-6 opacity-70"></p>
                 <h1 id="slide-title" class="text-7xl font-extrabold mb-10 text-center transition-opacity duration-300">Carregando Apresentação...</h1>
-                <div id="presenter-content" class="text-gray-200 text-center transition-opacity duration-300">
+                <div id="presenter-content" class="text-gray-200 text-center text-2xl transition-opacity duration-300">
                     Aguardando sincronização do Diretor.
                 </div>
             </div>
@@ -309,8 +328,12 @@
         const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
+        // Chaves de Storage Local
+        const LOCAL_STORAGE_INDEX_KEY = `slide_index_${appId}`;
+        const LOCAL_STORAGE_SLIDES_KEY = `slides_data_${appId}`;
+
         // Dados de slides Padrão
-        let slidesData = [
+        const DEFAULT_SLIDES = [
             { title: "Início: Introdução à Apresentação", content: "Olá a todos! Hoje vamos usar a voz para interagir com o software. Este é um modo diretor/apresentador. Vamos aprender como funciona.", trigger: "como funciona." },
             { title: "Slide 2: O Desafio da Transição", content: "A transição manual de slides exige um operador. Queremos que o foco seja 100% no conteúdo, na mensagem, e no palestrante. A tecnologia está aqui para ajudar.", trigger: "aqui para ajudar." },
             { title: "Slide 3: Tecnologia de Reconhecimento", content: "Usamos a API de Fala (Web Speech API) para escutar. O reconhecimento é contínuo e busca uma frase de gatilho, as últimas 4 palavras. A precisão é fundamental.", trigger: "é fundamental." },
@@ -321,28 +344,31 @@
         // Estado Global
         let db = null; // null se o Firebase falhar
         let auth = null;
-        let currentUserId = null;
+        let isFirebaseAvailable = false;
+        let slidesData = DEFAULT_SLIDES;
         let currentSlideIndex = 0;
         let recognition = null; // Instância do Speech Recognition
 
         // Referência do documento no Firestore (PÚBLICA para sincronizar entre janelas)
         const getPresentationDocRef = () => {
-            // Documento público para que ambas as janelas se comuniquem
             return doc(db, 'artifacts', appId, 'public', 'data', 'presentation_state', 'current_slide');
         };
 
         // --- FUNÇÕES DE UTILTÁRIO E ATUALIZAÇÃO DA UI ---
 
         function updateUI(slideIndex) {
-            currentSlideIndex = slideIndex;
             
-            const currentSlide = slidesData[slideIndex];
+            // Garante que o slideData mais recente seja usado
+            const safeIndex = Math.max(0, Math.min(slideIndex, slidesData.length - 1));
+            currentSlideIndex = safeIndex;
+
+            const currentSlide = slidesData[safeIndex];
             
             // Lógica para o Modo Diretor
             if (document.getElementById('director-interface').style.display !== 'none') {
                 
                 // Atualiza o indicador de slide atual na barra inferior
-                document.getElementById('current-slide-info').textContent = `Diapositivo ${slideIndex + 1} de ${slidesData.length}`;
+                document.getElementById('current-slide-info').textContent = `Diapositivo ${safeIndex + 1} de ${slidesData.length}`;
 
                 // --- ATUALIZAÇÃO DO SLIDE ATUAL (Pré-visualização do conteúdo) ---
                 document.getElementById('current-preview-title').textContent = currentSlide.title;
@@ -350,7 +376,7 @@
 
 
                 // --- ATUALIZAÇÃO DO PRÓXIMO SLIDE ---
-                let nextSlideIndex = slideIndex + 1;
+                let nextSlideIndex = safeIndex + 1;
                 const nextSlide = slidesData[nextSlideIndex];
                 
                 if (nextSlide) {
@@ -369,14 +395,14 @@
                 }
 
                 // Habilitar/Desabilitar botões de navegação manual
-                document.getElementById('prev-slide-btn').disabled = (slideIndex === 0);
-                document.getElementById('next-slide-btn').disabled = (slideIndex === slidesData.length - 1);
+                document.getElementById('prev-slide-btn').disabled = (safeIndex === 0);
+                document.getElementById('next-slide-btn').disabled = (safeIndex === slidesData.length - 1);
                 
                 // ATUALIZAÇÃO DA MINIATURA
                 const thumbnails = document.querySelectorAll('.thumbnail-item');
                 thumbnails.forEach((thumb, index) => {
                     thumb.classList.remove('thumbnail-active');
-                    if (index === slideIndex) {
+                    if (index === safeIndex) {
                         thumb.classList.add('thumbnail-active');
                         // Scroll para a miniatura ativa
                         thumb.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -397,7 +423,7 @@
                     // Atualiza o conteúdo após o fade-out
                     titleEl.textContent = currentSlide.title;
                     contentEl.textContent = currentSlide.content;
-                    document.getElementById('slide-index-display').textContent = `Slide ${slideIndex + 1} de ${slidesData.length}`;
+                    document.getElementById('slide-index-display').textContent = `Slide ${safeIndex + 1} de ${slidesData.length}`;
 
                     // Aplica a transição de fade-in
                     titleEl.style.opacity = '1';
@@ -409,33 +435,70 @@
         // --- LÓGICA DE NAVEGAÇÃO (Sync e Fallback) ---
 
         /**
-         * Move o slide, usando Firestore se estiver disponível, ou atualizando localmente.
+         * Move o slide, usando Firestore se estiver disponível, ou atualizando no LocalStorage.
          * @param {number} newIndex O novo índice do slide.
          */
         async function moveSlideTo(newIndex) {
             const index = Math.max(0, Math.min(newIndex, slidesData.length - 1));
 
-            if (db) {
+            if (isFirebaseAvailable) {
                 // Modo Sincronizado (Canvas/Firebase)
                 const docRef = getPresentationDocRef();
                 try {
+                    // Armazena no Firestore
                     await setDoc(docRef, { index: index, updated: new Date().toISOString() }, { merge: true });
-                    // Não precisa chamar updateUI aqui, o onSnapshot fará isso
-                    console.log("Índice do slide atualizado (SYNC) para:", index);
+                    console.log("Índice do slide atualizado (FIREBASE) para:", index);
                 } catch (error) {
-                    console.error("Erro ao atualizar o índice do slide no Firestore:", error);
-                    // Em caso de falha, atualiza localmente como fallback (menos ideal)
+                    // Se a escrita no Firestore falhar, cai para o LocalStorage
+                    console.error("Erro ao atualizar o índice do slide no Firestore. Usando LocalStorage:", error);
+                    localStorage.setItem(LOCAL_STORAGE_INDEX_KEY, index);
+                    // O Storage Event Listener (se configurado) fará o updateUI
                     updateUI(index); 
                 }
             } else {
-                // Modo Fallback (GitHub Pages/Local File)
-                updateUI(index);
+                // Modo Fallback (LocalStorage)
+                localStorage.setItem(LOCAL_STORAGE_INDEX_KEY, index);
+                // O Storage Event Listener (se configurado) fará o updateUI
+                updateUI(index); 
                 console.log("Índice do slide atualizado (LOCAL) para:", index);
             }
         }
 
-        // --- FUNÇÕES DE CARREGAMENTO DE TXT E MINIATURA ---
+        // --- LÓGICA DE CARREGAMENTO E SINCRONIZAÇÃO DE DADOS ---
         
+        /**
+         * Carrega slides do LocalStorage ou usa o padrão.
+         */
+        function loadSlides() {
+             const storedSlides = localStorage.getItem(LOCAL_STORAGE_SLIDES_KEY);
+             if (storedSlides) {
+                 try {
+                     const parsedSlides = JSON.parse(storedSlides);
+                     if (Array.isArray(parsedSlides) && parsedSlides.length > 0) {
+                         slidesData = parsedSlides;
+                         console.log("Slides carregados do LocalStorage.");
+                         return;
+                     }
+                 } catch (e) {
+                     console.error("Erro ao analisar slides do LocalStorage. Usando padrão.");
+                 }
+             }
+             // Fallback para slides padrão se não houver nada no LocalStorage ou se falhar
+             slidesData = DEFAULT_SLIDES;
+             console.log("Slides padrão carregados.");
+        }
+
+        /**
+         * Salva slides no LocalStorage.
+         */
+        function saveSlides() {
+            try {
+                localStorage.setItem(LOCAL_STORAGE_SLIDES_KEY, JSON.stringify(slidesData));
+            } catch (e) {
+                console.error("Erro ao salvar slides no LocalStorage:", e);
+            }
+        }
+
         function generateTrigger(text) {
             if (!text) return "";
             const cleanedText = text.replace(/[^a-záéíóúãõçàèìòùâêîôû\s]/gi, '').toLowerCase();
@@ -473,6 +536,7 @@
                 });
 
                 slidesData = newSlidesData;
+                saveSlides(); // Salva os novos slides para sincronia LocalStorage
                 currentSlideIndex = 0;
                 
                 console.log("Slides carregados do TXT:", slidesData);
@@ -524,7 +588,7 @@
         function initializeSpeechRecognition() {
             if (!('webkitSpeechRecognition' in window)) {
                 document.getElementById('voice-status').textContent = "ERRO: Reconhecimento de voz não suportado (use Chrome).";
-                return; // Não desabilita o botão, mas mostra o erro
+                return; 
             }
 
             recognition = new webkitSpeechRecognition();
@@ -589,7 +653,7 @@
             };
         }
 
-        // --- LISTENERS COMUNS (Incluindo Teclado) ---
+        // --- LISTENERS COMUNS E DE SINCRONIZAÇÃO DE FALLBACK ---
 
         function setupCommonListeners() {
              // Event Listener para Carregamento de Arquivo TXT
@@ -597,9 +661,10 @@
 
             // Event Listener para abrir a janela do Apresentador
             document.getElementById('open-presenter-btn').addEventListener('click', () => {
+                // Remove quaisquer parâmetros de modo para garantir que o novo modo seja aplicado
                 const presenterUrl = window.location.href.split('?')[0] + '?mode=presenter';
-                // Define o tamanho da janela para 800x600px
-                window.open(presenterUrl, 'PresenterScreen', 'width=800,height=600,resizable=yes');
+                // Abre em uma nova janela de 1280x720 (melhor para tela cheia)
+                window.open(presenterUrl, 'PresenterScreen', 'width=1280,height=720,resizable=yes');
             });
 
             // Event Listener para iniciar/parar o reconhecimento
@@ -636,13 +701,32 @@
                     moveSlideTo(currentSlideIndex - 1);
                 }
             });
+
+            // --- Listener de Sincronização Local (Fallback) ---
+            window.addEventListener('storage', (event) => {
+                if (event.key === LOCAL_STORAGE_INDEX_KEY) {
+                    const newIndex = parseInt(event.newValue, 10);
+                    if (!isNaN(newIndex) && newIndex !== currentSlideIndex) {
+                        console.log("LocalStorage detectou mudança de slide:", newIndex);
+                        updateUI(newIndex);
+                    }
+                }
+                // Sincroniza os slides caso o Diretor tenha feito um upload
+                if (event.key === LOCAL_STORAGE_SLIDES_KEY) {
+                    loadSlides();
+                    if (document.getElementById('director-interface').style.display !== 'none') {
+                        renderThumbnails();
+                    }
+                    updateUI(currentSlideIndex);
+                }
+            });
         }
 
 
         // --- LÓGICA FIRESTORE (Apenas para o modo SYNC) ---
 
         function setupSlideListener() {
-            if (!db) return; // Só configura se o DB estiver inicializado
+            if (!isFirebaseAvailable) return;
 
             const docRef = getPresentationDocRef();
 
@@ -655,10 +739,18 @@
                 } else if (!docSnap.exists()) {
                     // Inicializa o documento se ele não existir
                     console.log("Documento de estado não existe. Inicializando...");
-                    moveSlideTo(0); // Usa a função unificada
+                    // Apenas a janela do Diretor deve inicializar, para evitar corrida
+                    if (document.getElementById('director-interface').style.display !== 'none') {
+                         moveSlideTo(0); 
+                    }
                 }
             }, (error) => {
                 console.error("Erro no listener do Firestore:", error);
+                // Define o Firebase como indisponível e informa ao usuário
+                isFirebaseAvailable = false;
+                document.getElementById('voice-status').textContent = 'Voz: ERRO de Listener. Usando LocalStorage.';
+                document.getElementById('voice-status').classList.remove('text-green-500');
+                document.getElementById('voice-status').classList.add('text-yellow-500');
             });
         }
         
@@ -667,7 +759,10 @@
         const startApplication = async () => { 
             setLogLevel('debug');
             
-            // 3. Verifica o Modo (Diretor ou Apresentador) e unhide a interface correta IMEDIATAMENTE.
+            // 1. Carrega os dados dos slides (padrão ou local)
+            loadSlides();
+            
+            // 2. Determina o Modo e unhide a interface correta
             const isPresenterMode = window.location.search.includes('mode=presenter');
             
             if (isPresenterMode) {
@@ -678,7 +773,7 @@
                 document.getElementById('presenter-interface').classList.add('hidden');
             }
 
-            // A. Inicializa componentes locais (Reconhecimento de Voz e Listeners)
+            // 3. Inicializa componentes locais e Listeners
             setupCommonListeners(); 
             
             if (!isPresenterMode) {
@@ -688,50 +783,63 @@
                 document.getElementById('start-voice-btn').disabled = false; 
             }
 
-            // B. Tratamento de Falha do Firebase (GitHub Pages / Local File)
-            if (Object.keys(firebaseConfig).length === 0) {
-                 console.error("Firebase Config ausente. A sincronização em tempo real não funcionará.");
-                 document.getElementById('voice-status').textContent = "Voz: Firebase ausente. Sincronização desativada.";
-                 document.getElementById('voice-status').classList.remove('text-red-400');
-                 document.getElementById('voice-status').classList.add('text-yellow-500');
-                 
-                 updateUI(0); // Garante que o slide 0 seja exibido localmente
-                 return; // Sai antes da tentativa de inicialização do Firebase
-            }
+            // 4. Tenta inicializar o Firebase (para sincronização na nuvem)
+            if (Object.keys(firebaseConfig).length > 0) {
+                 try {
+                    const app = initializeFirebase(firebaseConfig); 
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+                    
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
 
-            // C. Inicializa Firebase (SÓ SE A CONFIG ESTIVER PRESENTE)
-            const app = initializeFirebase(firebaseConfig); 
-            db = getFirestore(app);
-            auth = getAuth(app);
+                    isFirebaseAvailable = true;
+                    // Define o estado inicial da voz como 'Desligado'
+                    if (!isPresenterMode) {
+                         document.getElementById('voice-status').textContent = "Voz: Desligado. Pronto para Iniciar.";
+                    }
+                    
+                    // Configura o Listener de Sincronização
+                    setupSlideListener();
+                    
+                    // Se estiver no modo diretor, garanta que o slide inicial seja 0 no Firestore
+                    if (!isPresenterMode) {
+                        getDoc(getPresentationDocRef()).then(docSnap => {
+                            if (!docSnap.exists()) {
+                                moveSlideTo(0);
+                            }
+                        });
+                    }
 
-            // D. Autentica o Usuário
-            try {
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
+                } catch (error) {
+                    console.error("Falha na inicialização/autenticação do Firebase. Usando LocalStorage.", error);
+                    isFirebaseAvailable = false;
+                    document.getElementById('voice-status').textContent = 'Voz: Firebase Indisponível. Usando LocalStorage.';
+                    document.getElementById('voice-status').classList.remove('text-red-400');
+                    document.getElementById('voice-status').classList.add('text-yellow-500');
                 }
-                currentUserId = auth.currentUser?.uid || crypto.randomUUID();
-                
-                // E. Configura o Listener de Sincronização
-                setupSlideListener();
-                
-                // Inicializa o slide para garantir que o estado seja 0 se for a primeira vez
-                if (!isPresenterMode) {
-                    getDoc(getPresentationDocRef()).then(docSnap => {
-                        if (!docSnap.exists()) {
-                            moveSlideTo(0);
-                        }
-                    });
-                }
-
-
-            } catch (error) {
-                console.error("Erro de Autenticação Firebase:", error);
-                document.getElementById('voice-status').textContent = 'Voz: ERRO de Autenticação. Sincronização desativada.';
-                document.getElementById('voice-status').classList.remove('text-green-500');
-                document.getElementById('voice-status').classList.add('text-red-400');
+            } else {
+                console.warn("Firebase Config ausente. Usando LocalStorage para sincronização.");
+                document.getElementById('voice-status').textContent = "Voz: Firebase ausente. Usando LocalStorage.";
+                document.getElementById('voice-status').classList.remove('text-red-400');
+                document.getElementById('voice-status').classList.add('text-yellow-500');
             }
+            
+            // 5. Carrega o índice do slide, priorizando o LocalStorage (que é mais confiável em falha)
+            const storedIndex = localStorage.getItem(LOCAL_STORAGE_INDEX_KEY);
+            if (storedIndex !== null) {
+                currentSlideIndex = parseInt(storedIndex, 10) || 0;
+            } else {
+                // Se for a primeira vez, garante que o slide 0 seja o inicial
+                moveSlideTo(0);
+            }
+            
+            // 6. Finalmente, atualiza a UI com o estado inicial
+            updateUI(currentSlideIndex);
+
         }
 
         window.addEventListener('load', startApplication); 
