@@ -101,6 +101,37 @@
     .section {
       margin-bottom: 10px;
     }
+
+    #apresentacao {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #121212;
+      color: #f0f0f0;
+      font-size: 40px;
+      padding: 60px;
+      box-sizing: border-box;
+      z-index: 9999;
+    }
+
+    #apresentacao button {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      font-size: 20px;
+      padding: 10px;
+      background-color: #333;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+
+    #apresentacao button:hover {
+      background-color: #555;
+    }
   </style>
 </head>
 <body>
@@ -128,10 +159,14 @@
     </div>
   </div>
 
+  <div id="apresentacao">
+    <div id="slideTela"></div>
+    <button onclick="fecharApresentacao()">Sair</button>
+  </div>
+
   <script>
     let slides = [];
     let slideIndex = 0;
-    let popupWindow = null;
 
     function abrirTXT() {
       const fileInput = document.getElementById('fileInput');
@@ -164,7 +199,7 @@
         miniatura.onclick = () => {
           slideIndex = index;
           atualizarTela();
-          abrirPopup();
+          abrirTelaCheia(index);
         };
         container.appendChild(miniatura);
       });
@@ -183,63 +218,34 @@
       });
     }
 
-    function abrirPopup() {
-  const texto = slides[slideIndex];
-  const popup = window.open('', '', 'width=800,height=600');
-  if (popup) {
-    popup.document.write(`
-      <html>
-        <head>
-          <title>Slide Atual</title>
-          <style>
-            body {
-              background-color: #121212;
-              color: #f0f0f0;
-              font-family: Arial, sans-serif;
-              padding: 40px;
-              font-size: 28px;
-              line-height: 1.5;
-            }
-          </style>
-        </head>
-        <body>
-          <div id="conteudo">${texto.replace(/\n/g, '<br>')}</div>
-          <script>
-            const slides = ${JSON.stringify(slides)};
-            let slideIndex = ${slideIndex};
+    function abrirTelaCheia(index) {
+      slideIndex = index;
+      document.getElementById('slideTela').innerHTML = slides[slideIndex].replace(/\n/g, '<br>');
+      document.getElementById('apresentacao').style.display = 'block';
+    }
 
-            function atualizarSlide() {
-              document.getElementById('conteudo').innerHTML = slides[slideIndex].replace(/\\n/g, '<br>');
-            }
-
-            document.addEventListener('keydown', function(e) {
-              if (e.key === 'ArrowRight' && slideIndex < slides.length - 1) {
-                slideIndex++;
-                atualizarSlide();
-              } else if (e.key === 'ArrowLeft' && slideIndex > 0) {
-                slideIndex--;
-                atualizarSlide();
-              }
-            });
-          <\/script>
-        </body>
-      </html>
-    `);
-    popup.document.close();
-  } else {
-    alert('Pop-up bloqueado. Ative pop-ups para visualizar o slide.');
-  }
-}
-
+    function fecharApresentacao() {
+      document.getElementById('apresentacao').style.display = 'none';
+    }
 
     document.addEventListener('keydown', function(e) {
-      if (slides.length === 0) return;
-      if (e.key === 'ArrowRight' && slideIndex < slides.length - 1) {
-        slideIndex++;
-        atualizarTela();
-      } else if (e.key === 'ArrowLeft' && slideIndex > 0) {
-        slideIndex--;
-        atualizarTela();
+      const tela = document.getElementById('apresentacao');
+      if (tela.style.display === 'block') {
+        if (e.key === 'ArrowRight' && slideIndex < slides.length - 1) {
+          slideIndex++;
+          document.getElementById('slideTela').innerHTML = slides[slideIndex].replace(/\n/g, '<br>');
+        } else if (e.key === 'ArrowLeft' && slideIndex > 0) {
+          slideIndex--;
+          document.getElementById('slideTela').innerHTML = slides[slideIndex].replace(/\n/g, '<br>');
+        }
+      } else {
+        if (e.key === 'ArrowRight' && slideIndex < slides.length - 1) {
+          slideIndex++;
+          atualizarTela();
+        } else if (e.key === 'ArrowLeft' && slideIndex > 0) {
+          slideIndex--;
+          atualizarTela();
+        }
       }
     });
   </script>
