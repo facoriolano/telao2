@@ -11,8 +11,8 @@ function startPresentation() {
     const text = reader.result;
     slides = splitTextIntoSlides(text);
     currentSlide = 0;
-    showPreview();
-    openProjectionWindow();
+    renderThumbnails();
+    updateSlide();
     startVoiceRecognition();
   };
   reader.readAsText(file);
@@ -40,9 +40,9 @@ function splitTextIntoSlides(text) {
     current.push(words[i]);
     container.innerText = current.join(' ');
     if (container.scrollHeight > 600) {
-      current.pop(); // remove last word that overflowed
+      current.pop();
       slides.push(current.join(' '));
-      current = [words[i]]; // start new slide with overflow word
+      current = [words[i]];
     }
   }
 
@@ -57,8 +57,45 @@ function splitTextIntoSlides(text) {
   return slides;
 }
 
+function renderThumbnails() {
+  const container = document.getElementById('thumbnails');
+  container.innerHTML = '';
+  slides.forEach((slide, index) => {
+    const thumb = document.createElement('div');
+    thumb.className = 'thumbnail';
+    thumb.innerText = slide;
+    thumb.onclick = () => {
+      currentSlide = index;
+      updateSlide();
+    };
+    if (index === currentSlide) thumb.classList.add('active');
+    container.appendChild(thumb);
+  });
+}
+
+function updateSlide() {
+  document.getElementById('slideIndicator').innerText = `Slide ${currentSlide + 1}`;
+  renderThumbnails();
+  openProjectionWindow();
+  showPreview();
+}
+
+function prevSlide() {
+  if (currentSlide > 0) {
+    currentSlide--;
+    updateSlide();
+  }
+}
+
+function nextSlide() {
+  if (currentSlide < slides.length - 1) {
+    currentSlide++;
+    updateSlide();
+  }
+}
+
 function showPreview() {
-  document.getElementById('slidePreview').innerText = slides.map((s, i) => `Slide ${i + 1}:\n${s}\n`).join('\n');
+  document.getElementById('slidePreview').innerText = slides[currentSlide];
 }
 
 function openProjectionWindow() {
@@ -96,13 +133,7 @@ function startVoiceRecognition() {
     const lastWords = slides[currentSlide].split(/\s+/).slice(-4).join(' ').toLowerCase();
 
     if (transcript.includes(lastWords)) {
-      currentSlide++;
-      if (currentSlide < slides.length) {
-        openProjectionWindow();
-      } else {
-        recognition.stop();
-        alert('Apresentação finalizada.');
-      }
+      nextSlide();
     }
   };
 
