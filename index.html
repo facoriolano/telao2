@@ -6,45 +6,79 @@
   <style>
     body {
       font-family: Arial, sans-serif;
+      background-color: #121212;
+      color: #f0f0f0;
       margin: 20px;
     }
 
-    h1 {
-      text-align: center;
+    h1, h2 {
+      color: #ffffff;
     }
 
-    #fileInput {
-      margin-bottom: 10px;
+    button, input[type="file"] {
+      background-color: #1f1f1f;
+      color: #f0f0f0;
+      border: 1px solid #444;
+      padding: 8px 12px;
+      margin: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #333;
     }
 
     #todosSlides {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
-      border: 1px solid #ccc;
+      border: 1px solid #333;
       padding: 10px;
       min-height: 100px;
-      background-color: #f0f0f0;
+      background-color: #1e1e1e;
     }
 
     .miniatura {
-      border: 1px solid #999;
-      padding: 8px;
-      background-color: #fff;
+      border: 2px solid #444;
+      padding: 10px;
+      background-color: #2a2a2a;
       cursor: pointer;
-      width: 150px;
-      height: 100px;
+      width: 180px;
+      height: 120px;
       overflow: hidden;
       font-size: 12px;
-      box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+      box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+      color: #ddd;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+    }
+
+    .miniatura.ativa {
+      border-color: #00bfff;
+      box-shadow: 0 0 10px rgba(0,191,255,0.5);
+    }
+
+    .miniatura h4 {
+      margin: 0 0 5px 0;
+      font-size: 14px;
+      font-weight: bold;
+      color: #fff;
+    }
+
+    .miniatura p {
+      margin: 0;
+      font-size: 12px;
+      color: #ccc;
     }
 
     .slideBox {
-      border: 1px solid #ccc;
+      border: 1px solid #333;
       padding: 10px;
       min-height: 100px;
       margin-top: 10px;
-      background-color: #fff;
+      background-color: #1f1f1f;
+      color: #eee;
     }
 
     .section {
@@ -90,6 +124,7 @@
         slides = texto.split('---').map(s => s.trim()).filter(s => s.length > 0);
         mostrarMiniaturas(slides);
         mostrarSlideAtual(0);
+        destacarMiniatura(0);
       };
       reader.readAsText(file);
     }
@@ -101,8 +136,15 @@
       slides.forEach((slide, index) => {
         const miniatura = document.createElement('div');
         miniatura.className = 'miniatura';
-        miniatura.innerText = slide;
-        miniatura.onclick = () => mostrarSlideAtual(index);
+
+        const titulo = slide.split('\n')[0] || `Slide ${index + 1}`;
+        const preview = slide.length > 100 ? slide.slice(0, 100) + '...' : slide;
+
+        miniatura.innerHTML = `<h4>${titulo}</h4><p>${preview}</p>`;
+        miniatura.onclick = () => {
+          mostrarSlideAtual(index);
+          destacarMiniatura(index);
+        };
         container.appendChild(miniatura);
       });
     }
@@ -113,6 +155,13 @@
 
       atual.innerText = slides[index] || '';
       proximo.innerText = slides[index + 1] || '(Fim da apresentação)';
+    }
+
+    function destacarMiniatura(index) {
+      const todas = document.querySelectorAll('.miniatura');
+      todas.forEach((el, i) => {
+        el.classList.toggle('ativa', i === index);
+      });
     }
   </script>
 </body>
