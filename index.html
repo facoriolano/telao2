@@ -1,253 +1,130 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <title>Apresentador Automático</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #121212;
-      color: #f0f0f0;
-      margin: 20px;
+<script>
+  let slides = [];
+  let slideIndex = 0;
+  let popupWindow = null;
+
+  function abrirTXT() {
+    const fileInput = document.getElementById('fileInput');
+    const file = fileInput.files[0];
+    if (!file) {
+      alert('Selecione um arquivo .txt primeiro.');
+      return;
     }
 
-    h1 {
-      color: #ffffff;
-      text-align: center;
-    }
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const texto = e.target.result;
+      slides = texto.split('---').map(s => s.trim()).filter(s => s.length > 0);
+      mostrarMiniaturas();
+      atualizarTela();
+    };
+    reader.readAsText(file);
+  }
 
-    button, input[type="file"] {
-      background-color: #1f1f1f;
-      color: #f0f0f0;
-      border: 1px solid #444;
-      padding: 8px 12px;
-      margin: 5px;
-      cursor: pointer;
-    }
+  function mostrarMiniaturas() {
+    const container = document.getElementById('todosSlides');
+    container.innerHTML = '';
 
-    button:hover {
-      background-color: #333;
-    }
-
-    .container {
-      display: flex;
-      gap: 20px;
-      margin-top: 20px;
-    }
-
-    .col-esquerda {
-      flex: 1;
-    }
-
-    .col-direita {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-
-    #todosSlides {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      border: 1px solid #333;
-      padding: 10px;
-      min-height: 100px;
-      background-color: #1e1e1e;
-    }
-
-    .miniatura {
-      border: 2px solid #444;
-      padding: 10px;
-      background-color: #2a2a2a;
-      cursor: pointer;
-      width: 180px;
-      height: 120px;
-      overflow: hidden;
-      font-size: 12px;
-      box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
-      color: #ddd;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-    }
-
-    .miniatura.ativa {
-      border-color: #00bfff;
-      box-shadow: 0 0 10px rgba(0,191,255,0.5);
-    }
-
-    .miniatura h4 {
-      margin: 0 0 5px 0;
-      font-size: 14px;
-      font-weight: bold;
-      color: #fff;
-    }
-
-    .miniatura p {
-      margin: 0;
-      font-size: 12px;
-      color: #ccc;
-    }
-
-    .slideBox {
-      border: 1px solid #333;
-      padding: 10px;
-      min-height: 150px;
-      background-color: #1f1f1f;
-      color: #eee;
-    }
-
-    .section {
-      margin-bottom: 10px;
-    }
-  </style>
-</head>
-<body>
-  <h1>Apresentador Automático</h1>
-
-  <input type="file" id="fileInput" accept=".txt">
-  <button onclick="abrirTXT()">Abrir TXT</button>
-
-  <div class="container">
-    <div class="col-esquerda">
-      <h2>Todos Slides</h2>
-      <div id="todosSlides"></div>
-    </div>
-
-    <div class="col-direita">
-      <div class="section">
-        <h2>Slide Atual</h2>
-        <div id="slideAtual" class="slideBox"></div>
-      </div>
-
-      <div class="section">
-        <h2>Próximo Slide</h2>
-        <div id="proximoSlide" class="slideBox"></div>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    let slides = [];
-    let slideIndex = 0;
-
-    function abrirTXT() {
-      const fileInput = document.getElementById('fileInput');
-      const file = fileInput.files[0];
-      if (!file) {
-        alert('Selecione um arquivo .txt primeiro.');
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const texto = e.target.result;
-        slides = texto.split('---').map(s => s.trim()).filter(s => s.length > 0);
-        mostrarMiniaturas(slides);
-        mostrarSlideAtual(0);
-        destacarMiniatura(0);
+    slides.forEach((slide, index) => {
+      const miniatura = document.createElement('div');
+      miniatura.className = 'miniatura';
+      const titulo = slide.split('\n')[0] || `Slide ${index + 1}`;
+      const preview = slide.length > 100 ? slide.slice(0, 100) + '...' : slide;
+      miniatura.innerHTML = `<h4>${titulo}</h4><p>${preview}</p>`;
+      miniatura.onclick = () => {
+        slideIndex = index;
+        atualizarTela();
+        abrirPopup();
       };
-      reader.readAsText(file);
-    }
-
-    function mostrarMiniaturas(slides) {
-      const container = document.getElementById('todosSlides');
-      container.innerHTML = '';
-
-      slides.forEach((slide, index) => {
-        const miniatura = document.createElement('div');
-        miniatura.className = 'miniatura';
-
-        const titulo = slide.split('\n')[0] || `Slide ${index + 1}`;
-        const preview = slide.length > 100 ? slide.slice(0, 100) + '...' : slide;
-
-        miniatura.innerHTML = `<h4>${titulo}</h4><p>${preview}</p>`;
-        miniatura.onclick = () => {
-          slideIndex = index;
-          mostrarSlideAtual(slideIndex);
-          destacarMiniatura(slideIndex);
-          abrirPopup(slideIndex);
-        };
-        container.appendChild(miniatura);
-      });
-    }
-
-    function mostrarSlideAtual(index) {
-      const atual = document.getElementById('slideAtual');
-      const proximo = document.getElementById('proximoSlide');
-
-      atual.innerText = slides[index] || '';
-      proximo.innerText = slides[index + 1] || '(Fim da apresentação)';
-    }
-
-    function destacarMiniatura(index) {
-      const todas = document.querySelectorAll('.miniatura');
-      todas.forEach((el, i) => {
-        el.classList.toggle('ativa', i === index);
-      });
-    }
-
-    function abrirPopup(index) {
-      const texto = slides[index];
-      const popup = window.open('', '', 'width=800,height=600');
-      if (popup) {
-        popup.document.write(`
-          <html>
-            <head>
-              <title>Slide Atual</title>
-              <style>
-                body {
-                  background-color: #121212;
-                  color: #f0f0f0;
-                  font-family: Arial, sans-serif;
-                  padding: 40px;
-                  font-size: 28px;
-                  line-height: 1.5;
-                }
-              </style>
-            </head>
-            <body>
-              <div id="conteudo">${texto.replace(/\n/g, '<br>')}</div>
-              <script>
-                const slides = ${JSON.stringify(slides)};
-                let slideIndex = ${index};
-
-                function atualizarSlide() {
-                  document.getElementById('conteudo').innerHTML = slides[slideIndex].replace(/\\n/g, '<br>');
-                }
-
-                document.addEventListener('keydown', function(e) {
-                  if (e.key === 'ArrowRight' && slideIndex < slides.length - 1) {
-                    slideIndex++;
-                    atualizarSlide();
-                  } else if (e.key === 'ArrowLeft' && slideIndex > 0) {
-                    slideIndex--;
-                    atualizarSlide();
-                  }
-                });
-              </script>
-            </body>
-          </html>
-        `);
-        popup.document.close();
-      } else {
-        alert('Pop-up bloqueado. Ative pop-ups para visualizar o slide.');
-      }
-    }
-
-    document.addEventListener('keydown', function(e) {
-      if (slides.length === 0) return;
-      if (e.key === 'ArrowRight' && slideIndex < slides.length - 1) {
-        slideIndex++;
-        mostrarSlideAtual(slideIndex);
-        destacarMiniatura(slideIndex);
-      } else if (e.key === 'ArrowLeft' && slideIndex > 0) {
-        slideIndex--;
-        mostrarSlideAtual(slideIndex);
-        destacarMiniatura(slideIndex);
-      }
+      container.appendChild(miniatura);
     });
-  </script>
-</body>
-</html>
+  }
+
+  function atualizarTela() {
+    document.getElementById('slideAtual').innerText = slides[slideIndex] || '';
+    document.getElementById('proximoSlide').innerText = slides[slideIndex + 1] || '(Fim da apresentação)';
+    destacarMiniatura(slideIndex);
+  }
+
+  function destacarMiniatura(index) {
+    const todas = document.querySelectorAll('.miniatura');
+    todas.forEach((el, i) => {
+      el.classList.toggle('ativa', i === index);
+    });
+  }
+
+  function abrirPopup() {
+    if (popupWindow && !popupWindow.closed) {
+      popupWindow.focus();
+      popupWindow.postMessage({ slideIndex, slides }, '*');
+      return;
+    }
+
+    popupWindow = window.open('', '', 'width=800,height=600');
+    if (popupWindow) {
+      popupWindow.document.write(`
+        <html>
+          <head>
+            <title>Slide Atual</title>
+            <style>
+              body {
+                background-color: #121212;
+                color: #f0f0f0;
+                font-family: Arial, sans-serif;
+                padding: 40px;
+                font-size: 28px;
+                line-height: 1.5;
+              }
+            </style>
+          </head>
+          <body>
+            <div id="conteudo"></div>
+            <script>
+              let slides = [];
+              let slideIndex = 0;
+
+              function atualizarSlide() {
+                document.getElementById('conteudo').innerHTML = slides[slideIndex].replace(/\\n/g, '<br>');
+              }
+
+              window.addEventListener('message', function(event) {
+                if (event.data.slides) {
+                  slides = event.data.slides;
+                  slideIndex = event.data.slideIndex;
+                  atualizarSlide();
+                }
+              });
+
+              document.addEventListener('keydown', function(e) {
+                if (e.key === 'ArrowRight' && slideIndex < slides.length - 1) {
+                  slideIndex++;
+                  atualizarSlide();
+                } else if (e.key === 'ArrowLeft' && slideIndex > 0) {
+                  slideIndex--;
+                  atualizarSlide();
+                }
+              });
+            <\/script>
+          </body>
+        </html>
+      `);
+      popupWindow.document.close();
+      setTimeout(() => {
+        popupWindow.postMessage({ slideIndex, slides }, '*');
+      }, 500);
+    } else {
+      alert('Pop-up bloqueado. Ative pop-ups para visualizar o slide.');
+    }
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (slides.length === 0) return;
+    if (e.key === 'ArrowRight' && slideIndex < slides.length - 1) {
+      slideIndex++;
+      atualizarTela();
+    } else if (e.key === 'ArrowLeft' && slideIndex > 0) {
+      slideIndex--;
+      atualizarTela();
+    }
+  });
+</script>
