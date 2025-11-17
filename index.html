@@ -1,154 +1,738 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Apresentação por Voz</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    body { font-family: 'Inter', sans-serif; }
-    .slide-button { width: 48px; height: 48px; border-radius: 8px; }
-    .slide-button.active { border: 2px solid orange; background-color: #1f2937; }
-    .circle-btn { width: 48px; height: 48px; border-radius: 9999px; font-size: 24px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apresentação por Voz (Modo Duplo)</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Define a fonte Inter */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #1A103A; } /* Roxo muito escuro */
+        
+        /* Cores e Estilos do Novo Design */
+        :root {
+            --color-primary: #fcd34d; /* Amarelo/Laranja vibrante */
+            --color-background: #1A103A; /* Roxo muito escuro */
+            --color-card-dark: #2A1D54; /* Roxo escuro para caixas */
+            --color-card-light: #3A2B6F; /* Roxo mais claro para o slide atual */
+        }
+        
+        .bg-custom-dark { background-color: var(--color-card-dark); }
+        .bg-custom-slide { background-color: var(--color-card-light); }
+        .text-primary { color: var(--color-primary); }
+        .border-primary { border-color: var(--color-primary); }
+
+        /* Estrutura do Diretor (Adaptada para o grid de miniaturas) */
+        #director-main-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr) 280px; /* 5 Colunas de Miniaturas + 1 Coluna Lateral */
+            grid-template-rows: auto 1fr auto; /* Cabeçalho, Conteúdo, Rodapé */
+            height: calc(100vh - 2rem);
+            gap: 1rem;
+            max-width: 1400px;
+            margin: auto;
+        }
+
+        #director-header {
+            grid-column: 1 / -1; 
+        }
+
+        #director-thumbnails-grid {
+            grid-column: 1 / 6; /* Ocupa as 5 colunas de miniaturas */
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 0.5rem;
+            max-height: 100%;
+            overflow-y: auto; /* Permite rolar se houver muitos slides */
+            padding-right: 0.5rem; /* Espaço para a barra de rolagem */
+        }
+        
+        #director-next-slide-area {
+            grid-column: 6 / -1; /* Ocupa a coluna lateral */
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        /* Otimização de Slides */
+        #presenter-screen {
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            background-color: var(--color-card-light); /* Cor de fundo do slide */
+        }
+        #slide-title {
+            color: var(--color-primary); /* Título na cor de destaque */
+        }
+        #presenter-content {
+            color: #E0E0E0; /* Texto em cinza claro */
+        }
+
+
+        /* Estilo da Miniatura de Slide (Pré-visualização de Conteúdo) */
+        .thumbnail-item {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: flex-start;
+            position: relative; 
+            aspect-ratio: 16 / 9; 
+            cursor: pointer;
+            font-weight: 500;
+            border-radius: 0.5rem;
+            transition: all 0.2s;
+            color: #d1d5db; 
+            padding: 0.5rem; 
+            overflow: hidden; 
+            text-align: left;
+        }
+        
+        .thumbnail-active {
+            background-color: var(--color-card-light); 
+            border: 4px solid var(--color-primary);
+            box-shadow: 0 0 10px var(--color-primary);
+        }
+
+        .thumbnail-item:not(.thumbnail-active):hover {
+            background-color: #3A2B6F; 
+            color: white;
+        }
+
+        /* Estilos do Título e Snippet na Miniatura */
+        .thumbnail-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 0.25rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            width: 100%;
+        }
+        
+        .thumbnail-content-snippet {
+            font-size: 0.7rem;
+            line-height: 1.2;
+            color: #9ca3af;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+        }
+
+        /* Novo estilo para o número do slide no canto (pequeno, como no PPT) */
+        .thumbnail-number-overlay {
+            position: absolute;
+            bottom: 4px;
+            right: 4px;
+            background-color: rgba(0, 0, 0, 0.5); 
+            color: white;
+            font-size: 0.6rem;
+            font-weight: 600;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+
+        /* --- PREVIEW DO SLIDE ATUAL --- */
+        #current-slide-preview-container {
+            aspect-ratio: 16 / 9;
+            background-color: var(--color-card-light);
+            border: 2px solid var(--color-primary);
+            border-radius: 0.75rem;
+            box-shadow: 0 0 15px rgba(252, 211, 77, 0.5);
+            display: flex;
+            flex-direction: column; /* Conteúdo em coluna */
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            text-align: center;
+            overflow: hidden;
+        }
+
+        .preview-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--color-primary);
+            margin-bottom: 0.5rem;
+        }
+        
+        .preview-content {
+            font-size: 0.9rem;
+            color: #E0E0E0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 5; /* Limita o conteúdo no preview */
+            -webkit-box-orient: vertical;
+        }
+        
+        /* --- CARD DO PRÓXIMO SLIDE --- */
+        #next-slide-preview-card {
+            background-color: var(--color-card-dark);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            color: white;
+            text-align: center;
+            flex-grow: 1;
+        }
+
+        #next-slide-content-container {
+            flex-grow: 1;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            background-color: #3A2B6F; /* Cor mais clara para o conteúdo */
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Rodapé com controles */
+        #director-bottom-bar {
+            grid-column: 1 / -1; 
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            border-top: 1px solid #3A2B6F;
+        }
+
+    </style>
 </head>
-<body class="bg-gray-950 text-gray-100">
 
-<div class="flex flex-col md:flex-row p-6 gap-6">
-  <!-- Grade de Slides -->
-  <div class="bg-gray-900 p-4 rounded-xl shadow-xl w-full md:w-1/3">
-    <h2 class="text-xl font-bold text-indigo-400 mb-4">Slides</h2>
-    <div id="slide-grid" class="grid grid-cols-5 gap-3"></div>
-  </div>
+<body class="min-h-screen text-gray-100 p-4">
 
-  <!-- Painel de Navegação -->
-  <div class="bg-gray-900 p-6 rounded-xl shadow-xl w-full md:w-2/3 flex flex-col justify-between">
-    <div>
-      <h2 class="text-xl font-bold text-indigo-400 mb-2">SLIDE ATUAL</h2>
-      <div id="current-slide-box" class="bg-gray-800 p-4 rounded mb-6">
-        <h3 id="current-title" class="text-yellow-300 text-2xl font-bold mb-2">Carregando...</h3>
-        <p id="current-content" class="text-gray-200 text-lg">Aguardando conteúdo...</p>
-      </div>
+    <!-- Interface do Diretor (Redesenhada) -->
+    <div id="director-interface" class="hidden h-full">
+        <div id="director-main-grid" class="bg-custom-dark rounded-2xl shadow-xl p-4">
+            
+            <!-- 1. HEADER -->
+            <div id="director-header" class="flex justify-between items-center pb-3 border-b border-gray-700 mb-4">
+                <h1 class="text-xl md:text-2xl font-extrabold text-white">
+                    TODOS SLIDES
+                </h1>
+                <div class="flex items-center space-x-4">
+                    <button id="start-voice-btn" class="px-3 py-1 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 transition duration-300 disabled:bg-gray-600">
+                        <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                        Iniciar Voz
+                    </button>
+                    <button id="open-presenter-btn" class="px-3 py-1 bg-gray-500 text-white font-semibold rounded-md hover:bg-gray-600 transition duration-300">
+                        Abrir Tela do Apresentador
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 2. GRID DE MINIATURAS (5 colunas) -->
+            <div id="director-thumbnails-grid">
+                <!-- Miniaturas renderizadas pelo JS -->
+            </div>
 
-      <h2 class="text-xl font-bold text-indigo-400 mb-2">PRÓXIMO SLIDE</h2>
-      <div id="next-slide-box" class="bg-gray-800 p-4 rounded">
-        <h3 id="next-title" class="text-yellow-300 text-xl font-semibold mb-2">---</h3>
-        <p id="next-content" class="text-gray-400 text-sm">---</p>
-      </div>
+            <!-- 3. COLUNA LATERAL (Slide Atual + Próximo) -->
+            <div id="director-next-slide-area">
+                <!-- Área do SLIDE ATUAL (Agora um preview de conteúdo) -->
+                <div id="current-slide-preview-container">
+                    <p class="preview-title" id="current-preview-title">SLIDE ATUAL</p>
+                    <p class="preview-content" id="current-preview-content">O conteúdo do slide aparecerá aqui.</p>
+                </div>
+                
+                <!-- Área do PRÓXIMO SLIDE -->
+                <div id="next-slide-preview-card">
+                    <p class="text-xl font-bold text-gray-300">PRÓXIMO SLIDE</p>
+                    <div id="next-slide-content-container">
+                        <h3 id="next-preview-title" class="preview-title text-base">Título do Próximo</h3>
+                        <p id="next-preview-content" class="preview-content text-xs">Próximo conteúdo resumido aqui...</p>
+                    </div>
+
+                    <!-- Gatilho e Status da Voz -->
+                    <div class="pt-2 border-t border-gray-600">
+                        <p id="voice-status" class="text-sm font-medium text-red-400">Voz: Desligado</p>
+                        <p id="expected-trigger" class="text-xs text-primary bg-gray-700/50 p-1 rounded-md mt-1 border border-primary">Gatilho esperado: N/A</p>
+                        <p id="last-transcript" class="text-xs text-gray-400 mt-2">Transcrição: Aguardando...</p>
+                    </div>
+
+                    <!-- Botão de Upload TXT -->
+                    <div class="mt-4 p-2 bg-gray-700 rounded-lg">
+                        <input type="file" id="file-input" accept=".txt" class="block w-full text-xs text-gray-300
+                            file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0
+                            file:text-xs file:font-semibold file:bg-primary file:text-gray-900
+                            hover:file:bg-yellow-300 cursor-pointer
+                        "/>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 4. FOOTER / BARRA DE NAVEGAÇÃO -->
+            <div id="director-bottom-bar">
+                <p id="current-slide-info" class="text-lg font-bold text-white">Slide Atual: Carregando...</p>
+                <div class="flex items-center space-x-2">
+                    <button id="prev-slide-btn" class="p-2 text-primary rounded-full hover:bg-gray-700 transition duration-150 disabled:opacity-30 disabled:hover:bg-transparent" disabled>
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    </button>
+                    <button id="next-slide-btn" class="p-2 text-primary rounded-full hover:bg-gray-700 transition duration-150 disabled:opacity-30 disabled:hover:bg-transparent" disabled>
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+        </div>
     </div>
 
-    <!-- Botões de Navegação -->
-    <div class="flex justify-center gap-6 mt-6">
-      <button id="prev-btn" class="circle-btn bg-gray-700 hover:bg-gray-600 text-white" disabled>←</button>
-      <button id="next-btn" class="circle-btn bg-blue-500 hover:bg-blue-600 text-white" disabled>→</button>
+    <!-- Interface do Apresentador (Mantida a funcionalidade, cores ajustadas) -->
+    <div id="presenter-interface" class="hidden">
+        <div id="presenter-screen" class="flex flex-col items-center justify-center p-10 text-white">
+            <div class="max-w-6xl w-full p-10 rounded-xl">
+                <p id="slide-index-display" class="text-3xl font-light text-primary mb-6 opacity-70"></p>
+                <h1 id="slide-title" class="text-7xl font-extrabold mb-10 text-center transition-opacity duration-300">Carregando Apresentação...</h1>
+                <div id="presenter-content" class="text-gray-200 text-center transition-opacity duration-300">
+                    Aguardando sincronização do Diretor.
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
-</div>
 
-<!-- Upload e Reconhecimento -->
-<div class="p-6 max-w-4xl mx-auto">
-  <div class="bg-gray-800 p-4 rounded mb-4">
-    <input type="file" id="file-input" accept=".txt" class="block w-full text-sm text-gray-300 file:bg-indigo-500 file:text-white file:rounded-full file:px-4 file:py-2"/>
-    <p class="text-xs text-gray-400 mt-2">Separe slides com linha em branco.</p>
-  </div>
-  <div class="flex gap-4">
-    <button id="start-voice-btn" class="px-6 py-3 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400" disabled>Iniciar Reconhecimento</button>
-    <button id="open-presenter-btn" class="px-6 py-3 bg-indigo-500 text-white rounded hover:bg-indigo-600">Abrir Tela do Apresentador</button>
-  </div>
-  <p id="voice-status" class="mt-4 text-sm text-red-400">Reconhecimento de Voz: Desligado</p>
-  <p id="last-transcript" class="text-sm text-gray-400 mt-2">Última Transcrição: ---</p>
-</div>
+    
+    <script type="module">
+        // Importa a função do Firebase com um alias para evitar conflito de nome
+        import { initializeApp as initializeFirebase } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, setDoc, getDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-<!-- Apresentador -->
-<div id="presenter-interface" class="hidden">
-  <div id="presenter-screen" class="flex flex-col items-center justify-center p-10 text-white bg-black">
-    <div class="max-w-6xl w-full">
-      <p id="slide-index-display" class="text-3xl text-indigo-400 mb-6"></p>
-      <h1 id="slide-title" class="text-7xl font-extrabold mb-10 text-yellow-300 text-center">Carregando...</h1>
-      <div id="presenter-content" class="text-center text-gray-200">Aguardando...</div>
-    </div>
-  </div>
-</div>
+        // Configurações Globais do Canvas (MANDATÓRIO)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-voice-presenter-app';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        // Dados de slides Padrão
+        let slidesData = [
+            { title: "Início: Introdução à Apresentação", content: "Olá a todos! Hoje vamos usar a voz para interagir com o software. Este é um modo diretor/apresentador. Vamos aprender como funciona.", trigger: "como funciona." },
+            { title: "Slide 2: O Desafio da Transição", content: "A transição manual de slides exige um operador. Queremos que o foco seja 100% no conteúdo, na mensagem, e no palestrante. A tecnologia está aqui para ajudar.", trigger: "aqui para ajudar." },
+            { title: "Slide 3: Tecnologia de Reconhecimento", content: "Usamos a API de Fala (Web Speech API) para escutar. O reconhecimento é contínuo e busca uma frase de gatilho, as últimas 4 palavras. A precisão é fundamental.", trigger: "é fundamental." },
+            { title: "Slide 4: A Chave para a Automação", content: "Ao detectar a frase de gatilho, o sistema atualiza o índice do slide via Firestore. O Apresentador vê a mudança em tempo real. Uma sincronização perfeita. Próximo slide em 3, 2, 1.", trigger: "slide em 3, 2, 1." },
+            { title: "Slide 5: Obrigado!", content: "Esperamos que este protótipo demonstre o poder da automação por voz em apresentações. Obrigado a todos pela atenção!", trigger: "" } // Último slide não tem gatilho
+        ];
 
-<script>
-let slidesData = [];
-let currentSlideIndex = 0;
-let recognition = null;
-const isPresenterMode = window.location.search.includes('mode=presenter');
+        // Estado Global
+        let db = null; // null se o Firebase falhar
+        let auth = null;
+        let currentUserId = null;
+        let currentSlideIndex = 0;
+        let recognition = null; // Instância do Speech Recognition
 
-function generateTrigger(text) {
-  const words = text.replace(/[^\p{L}\s]/gu, "").trim().split(/\s+/);
-  return words.slice(-4).join(" ") + ".";
-}
+        // Referência do documento no Firestore (PÚBLICA para sincronizar entre janelas)
+        const getPresentationDocRef = () => {
+            // Documento público para que ambas as janelas se comuniquem
+            return doc(db, 'artifacts', appId, 'public', 'data', 'presentation_state', 'current_slide');
+        };
 
-function updateUI(index) {
-  currentSlideIndex = index;
-  const slide = slidesData[index];
-  const nextSlide = slidesData[index + 1] || { title: "---", content: "---" };
+        // --- FUNÇÕES DE UTILTÁRIO E ATUALIZAÇÃO DA UI ---
 
-  document.getElementById('current-title').textContent = slide.title;
-  document.getElementById('current-content').textContent = slide.content;
-  document.getElementById('next-title').textContent = nextSlide.title;
-  document.getElementById('next-content').textContent = nextSlide.content;
+        function updateUI(slideIndex) {
+            currentSlideIndex = slideIndex;
+            
+            const currentSlide = slidesData[slideIndex];
+            
+            // Lógica para o Modo Diretor
+            if (document.getElementById('director-interface').style.display !== 'none') {
+                
+                // Atualiza o indicador de slide atual na barra inferior
+                document.getElementById('current-slide-info').textContent = `Diapositivo ${slideIndex + 1} de ${slidesData.length}`;
 
-  document.getElementById('prev-btn').disabled = (index === 0);
-  document.getElementById('next-btn').disabled = (index === slidesData.length - 1);
+                // --- ATUALIZAÇÃO DO SLIDE ATUAL (Pré-visualização do conteúdo) ---
+                document.getElementById('current-preview-title').textContent = currentSlide.title;
+                document.getElementById('current-preview-content').textContent = currentSlide.content;
 
-  document.getElementById('slide-title').textContent = slide.title;
-  document.getElementById('presenter-content').textContent = slide.content;
-  document.getElementById('slide-index-display').textContent = `Slide ${index + 1} de ${slidesData.length}`;
 
-  renderSlideGrid();
-}
+                // --- ATUALIZAÇÃO DO PRÓXIMO SLIDE ---
+                let nextSlideIndex = slideIndex + 1;
+                const nextSlide = slidesData[nextSlideIndex];
+                
+                if (nextSlide) {
+                    document.getElementById('next-preview-title').textContent = nextSlide.title;
+                    // Limita o conteúdo do próximo slide para o preview
+                    document.getElementById('next-preview-content').textContent = nextSlide.content.substring(0, 150) + (nextSlide.content.length > 150 ? '...' : '');
+                    document.getElementById('expected-trigger').textContent = `Gatilho p/ Próximo: "${nextSlide.trigger}"`;
+                    document.getElementById('next-slide-content-container').classList.remove('justify-center');
+                    document.getElementById('next-slide-content-container').classList.add('justify-start');
+                } else {
+                    document.getElementById('next-preview-title').textContent = "FIM DA APRESENTAÇÃO";
+                    document.getElementById('next-preview-content').textContent = "Não há mais slides disponíveis.";
+                    document.getElementById('expected-trigger').textContent = "FIM DA APRESENTAÇÃO (sem gatilho).";
+                    document.getElementById('next-slide-content-container').classList.add('justify-center');
+                    document.getElementById('next-slide-content-container').classList.remove('justify-start');
+                }
 
-function renderSlideGrid() {
-  const grid = document.getElementById('slide-grid');
-  grid.innerHTML = '';
-  slidesData.forEach((s, i) => {
-    const btn = document.createElement('button');
-    btn.className = `slide-button bg-gray-700 text-white text-sm font-bold ${i === currentSlideIndex ? 'active' : ''}`;
-    btn.textContent = String(i + 1).padStart(2, '0');
-    btn.onclick = () => updateUI(i);
-    grid.appendChild(btn);
-  });
-}
+                // Habilitar/Desabilitar botões de navegação manual
+                document.getElementById('prev-slide-btn').disabled = (slideIndex === 0);
+                document.getElementById('next-slide-btn').disabled = (slideIndex === slidesData.length - 1);
+                
+                // ATUALIZAÇÃO DA MINIATURA
+                const thumbnails = document.querySelectorAll('.thumbnail-item');
+                thumbnails.forEach((thumb, index) => {
+                    thumb.classList.remove('thumbnail-active');
+                    if (index === slideIndex) {
+                        thumb.classList.add('thumbnail-active');
+                        // Scroll para a miniatura ativa
+                        thumb.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }
+                });
+            }
 
-function initializeSpeechRecognition() {
-  if (!('webkitSpeechRecognition' in window)) {
-    document.getElementById('voice-status').textContent = "ERRO: Navegador não suporta reconhecimento de voz.";
-    return;
-  }
-  recognition = new webkitSpeechRecognition();
-  recognition.continuous = true;
-  recognition.interimResults = false;
-  recognition.lang = 'pt-BR';
+            // Lógica para o Modo Apresentador
+            if (document.getElementById('presenter-interface').style.display !== 'none') {
+                const titleEl = document.getElementById('slide-title');
+                const contentEl = document.getElementById('presenter-content');
 
-  recognition.onstart = () => document.getElementById('voice-status').textContent = "Reconhecimento de Voz: ATIVO";
-  recognition.onend = () => document.getElementById('voice-status').textContent = "Reconhecimento de Voz: Desligado";
-  recognition.onresult = (event) => {
-    const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
-    document.getElementById('last-transcript').textContent = `Última Transcrição: "${transcript}"`;
-    const nextSlideIndex = currentSlideIndex + 1;
-    const expectedTrigger = slidesData[nextSlideIndex]?.trigger?.toLowerCase().trim();
-    if (expectedTrigger && transcript.includes(expectedTrigger)) {
-      updateUI(nextSlideIndex);
-    }
-  };
-}
+                // Aplica a transição de fade-out
+                titleEl.style.opacity = '0';
+                contentEl.style.opacity = '0';
+                
+                setTimeout(() => {
+                    // Atualiza o conteúdo após o fade-out
+                    titleEl.textContent = currentSlide.title;
+                    contentEl.textContent = currentSlide.content;
+                    document.getElementById('slide-index-display').textContent = `Slide ${slideIndex + 1} de ${slidesData.length}`;
 
-document.getElementById('file-input').addEventListener('change', (event) => {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const text = e.target.result;
-    const blocks = text.split(/\n\s*\n/).filter(block => block.trim().length > 0);
-    slidesData = blocks.map((content, i) => {
-      const title = content.split('\n')[0].trim();
-      const trigger = (i < blocks.length - 1) ? generateTrigger(content) : "";
-      return { title, content: content.trim(), trigger };
-    });
-    updateUI(0);
-    document.getElementById('start-voice-btn').disabled = false;
-  };
-  reader.read
+                    // Aplica a transição de fade-in
+                    titleEl.style.opacity = '1';
+                    contentEl.style.opacity = '1';
+                }, 300); // 300ms corresponde à duração da transição no CSS
+            }
+        }
+        
+        // --- LÓGICA DE NAVEGAÇÃO (Sync e Fallback) ---
+
+        /**
+         * Move o slide, usando Firestore se estiver disponível, ou atualizando localmente.
+         * @param {number} newIndex O novo índice do slide.
+         */
+        async function moveSlideTo(newIndex) {
+            const index = Math.max(0, Math.min(newIndex, slidesData.length - 1));
+
+            if (db) {
+                // Modo Sincronizado (Canvas/Firebase)
+                const docRef = getPresentationDocRef();
+                try {
+                    await setDoc(docRef, { index: index, updated: new Date().toISOString() }, { merge: true });
+                    console.log("Índice do slide atualizado (SYNC):", index);
+                } catch (error) {
+                    console.error("Erro ao atualizar o índice do slide no Firestore:", error);
+                }
+            } else {
+                // Modo Fallback (GitHub Pages/Local File)
+                updateUI(index);
+                console.log("Índice do slide atualizado (LOCAL):", index);
+            }
+        }
+
+        // --- FUNÇÕES DE CARREGAMENTO DE TXT E MINIATURA ---
+        
+        function generateTrigger(text) {
+            if (!text) return "";
+            const cleanedText = text.replace(/[^a-záéíóúãõçàèìòùâêîôû\s]/gi, '').toLowerCase();
+            const words = cleanedText.split(/\s+/).filter(word => word.length > 0);
+            if (words.length === 0) return "";
+            // Usa as últimas 4 palavras como gatilho
+            const triggerWords = words.slice(-4);
+            return triggerWords.join(' ') + ".";
+        }
+
+        function handleFileLoad(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const text = e.target.result;
+                // Separar blocos de texto por duas ou mais quebras de linha
+                const blocks = text.split(/\n\s*\n/).filter(block => block.trim().length > 0);
+
+                if (blocks.length === 0) {
+                    console.error("Nenhum slide detectado no arquivo.");
+                    document.getElementById('voice-status').textContent = "ERRO: Nenhum conteúdo válido no arquivo TXT.";
+                    return;
+                }
+
+                const newSlidesData = blocks.map((content, index) => {
+                    const trimmedContent = content.trim();
+                    const firstLine = trimmedContent.split('\n')[0].trim();
+                    const title = firstLine.length < 50 ? firstLine : `Slide Personalizado ${index + 1}`;
+                    // Gera o gatilho para todos os slides, exceto o último
+                    const trigger = (index < blocks.length - 1) ? generateTrigger(trimmedContent) : "";
+                    
+                    return { title, content: trimmedContent, trigger };
+                });
+
+                slidesData = newSlidesData;
+                currentSlideIndex = 0;
+                
+                console.log("Slides carregados do TXT:", slidesData);
+                renderThumbnails();
+                moveSlideTo(0); // Usa a função unificada de movimento
+                document.getElementById('voice-status').textContent = "Apresentação TXT carregada. Pronto para começar.";
+                document.getElementById('start-voice-btn').disabled = false;
+            };
+            reader.readAsText(file);
+        }
+        
+        // Renderiza as miniaturas como pré-visualizações de conteúdo (título, snippet e número no canto)
+        function renderThumbnails() {
+            const container = document.getElementById('director-thumbnails-grid');
+            container.innerHTML = '';
+            
+            slidesData.forEach((slide, index) => {
+                const thumbnail = document.createElement('div');
+                
+                thumbnail.className = `thumbnail-item bg-custom-dark`;
+                thumbnail.dataset.index = index;
+                
+                const slideNumber = String(index + 1);
+                
+                // Limita o título e o snippet para caberem bem
+                const title = slide.title.substring(0, 40) + (slide.title.length > 40 ? '...' : '');
+                // Pega apenas os primeiros 100 caracteres para o snippet
+                const contentSnippet = slide.content.substring(0, 100) + (slide.content.length > 100 ? '...' : '');
+
+                // Estrutura HTML atualizada para o preview de conteúdo + número de canto
+                thumbnail.innerHTML = `
+                    <div class="thumbnail-title">${title}</div>
+                    <div class="thumbnail-content-snippet">${contentSnippet}</div>
+                    <div class="thumbnail-number-overlay">${slideNumber}</div>
+                `;
+
+                thumbnail.addEventListener('click', () => {
+                    moveSlideTo(index); // Usa a função unificada
+                });
+
+                container.appendChild(thumbnail);
+            });
+            // Após renderizar, garantir que a UI seja atualizada para destacar o slide atual
+            updateUI(currentSlideIndex);
+        }
+
+        // --- LÓGICA DO RECONHECIMENTO DE VOZ ---
+
+        function initializeSpeechRecognition() {
+            if (!('webkitSpeechRecognition' in window)) {
+                document.getElementById('voice-status').textContent = "ERRO: Reconhecimento de voz não suportado (use Chrome).";
+                document.getElementById('start-voice-btn').disabled = true;
+                return;
+            }
+
+            recognition = new webkitSpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = false;
+            recognition.lang = 'pt-BR';
+
+            recognition.onstart = () => {
+                document.getElementById('voice-status').textContent = "Voz: ATIVO. Falando...";
+                document.getElementById('voice-status').classList.remove('text-red-400', 'text-yellow-500');
+                document.getElementById('voice-status').classList.add('text-green-500');
+            };
+
+            recognition.onend = () => {
+                document.getElementById('voice-status').textContent = "Voz: Desligado. Tentando reiniciar...";
+                document.getElementById('voice-status').classList.remove('text-green-500');
+                document.getElementById('voice-status').classList.add('text-red-400');
+                setTimeout(() => {
+                    try {
+                        // Verifica se não é o último slide antes de tentar reiniciar
+                        if (currentSlideIndex < slidesData.length - 1) {
+                            recognition.start();
+                        }
+                    } catch (e) {
+                        console.warn("Tentativa de reiniciar o reconhecimento falhou.", e);
+                        document.getElementById('voice-status').textContent = "Voz: Desligado. Clique para tentar iniciar novamente.";
+                    }
+                }, 500);
+            };
+
+            recognition.onerror = (event) => {
+                console.error("Erro no reconhecimento de voz:", event);
+                document.getElementById('voice-status').textContent = `ERRO de Voz: ${event.error}. Tentando reiniciar...`;
+            };
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
+                document.getElementById('last-transcript').textContent = `Transcrição: "${transcript}"`;
+                
+                if (currentSlideIndex < slidesData.length - 1) {
+                    const nextSlideIndex = currentSlideIndex + 1;
+                    const expectedTriggerPhrase = slidesData[nextSlideIndex].trigger.toLowerCase().trim();
+                    
+                    if (expectedTriggerPhrase && transcript.endsWith(expectedTriggerPhrase)) {
+                        console.log("Gatilho detectado! Avançando slide.");
+                        document.getElementById('voice-status').textContent = "Voz: GATILHO DETECTADO! Avançando...";
+                        
+                        recognition.stop(); 
+                        moveSlideTo(nextSlideIndex); // Usa a função unificada
+
+                        setTimeout(() => {
+                            if (nextSlideIndex < slidesData.length - 1) {
+                                recognition.start();
+                            } else {
+                                document.getElementById('voice-status').textContent = "FIM DA APRESENTAÇÃO. Voz Desligada.";
+                                document.getElementById('start-voice-btn').textContent = "FIM";
+                                document.getElementById('start-voice-btn').disabled = true;
+                            }
+                        }, 1000); 
+                    }
+                }
+            };
+        }
+
+        // --- LISTENERS COMUNS (Incluindo Teclado) ---
+
+        function setupCommonListeners() {
+             // Event Listener para Carregamento de Arquivo TXT
+            document.getElementById('file-input').addEventListener('change', handleFileLoad);
+
+            // Event Listener para abrir a janela do Apresentador
+            document.getElementById('open-presenter-btn').addEventListener('click', () => {
+                const presenterUrl = window.location.href.split('?')[0] + '?mode=presenter';
+                // Define o tamanho da janela para 800x600px
+                window.open(presenterUrl, 'PresenterScreen', 'width=800,height=600,resizable=yes');
+            });
+
+            // Event Listener para iniciar/parar o reconhecimento
+            document.getElementById('start-voice-btn').addEventListener('click', () => {
+                if (recognition) {
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        console.warn("Reconhecimento já está ativo ou erro ao iniciar.", e);
+                    }
+                }
+            });
+
+            // Event Listeners para navegação manual
+            document.getElementById('prev-slide-btn').addEventListener('click', () => {
+                moveSlideTo(currentSlideIndex - 1); // Usa a função unificada
+            });
+            document.getElementById('next-slide-btn').addEventListener('click', () => {
+                moveSlideTo(currentSlideIndex + 1); // Usa a função unificada
+            });
+            
+            // Listener para Setas do Teclado (← e →)
+            window.addEventListener('keydown', (event) => {
+                // Apenas avança/volta se o usuário não estiver digitando em um campo de texto
+                if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
+                    return;
+                }
+
+                if (event.key === 'ArrowRight') {
+                    event.preventDefault(); // Evita a rolagem da página
+                    moveSlideTo(currentSlideIndex + 1);
+                } else if (event.key === 'ArrowLeft') {
+                    event.preventDefault(); // Evita a rolagem da página
+                    moveSlideTo(currentSlideIndex - 1);
+                }
+            });
+        }
+
+
+        // --- LÓGICA FIRESTORE (Apenas para o modo SYNC) ---
+
+        function setupSlideListener() {
+            if (!db) return; // Só configura se o DB estiver inicializado
+
+            const docRef = getPresentationDocRef();
+
+            onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists() && docSnap.data().index !== undefined) {
+                    const newIndex = docSnap.data().index;
+                    console.log("Firestore detectou mudança de slide:", newIndex);
+                    // Garante que o índice não exceda o novo tamanho dos slides
+                    updateUI(Math.min(newIndex, slidesData.length - 1));
+                } else if (!docSnap.exists()) {
+                    // Inicializa o documento se ele não existir
+                    console.log("Documento de estado não existe. Inicializando...");
+                    moveSlideTo(0); // Usa a função unificada
+                }
+            }, (error) => {
+                console.error("Erro no listener do Firestore:", error);
+            });
+        }
+        
+        // --- INICIALIZAÇÃO DA APLICAÇÃO ---
+
+        const startApplication = async () => { 
+            setLogLevel('debug');
+            
+            // 3. Verifica o Modo (Diretor ou Apresentador) e unhide a interface correta IMEDIATAMENTE.
+            const isPresenterMode = window.location.search.includes('mode=presenter');
+            
+            if (isPresenterMode) {
+                document.getElementById('director-interface').classList.add('hidden');
+                document.getElementById('presenter-interface').classList.remove('hidden');
+            } else {
+                document.getElementById('director-interface').classList.remove('hidden'); 
+                document.getElementById('presenter-interface').classList.add('hidden');
+            }
+
+            // A. Inicializa componentes locais (Reconhecimento de Voz e Listeners)
+            setupCommonListeners(); 
+            
+            if (!isPresenterMode) {
+                initializeSpeechRecognition();
+                renderThumbnails(); // RENDERIZA A NOVA GRADE
+            }
+
+            // B. Tratamento de Falha do Firebase (GitHub Pages / Local File)
+            if (Object.keys(firebaseConfig).length === 0) {
+                 console.error("Firebase Config ausente. A sincronização em tempo real não funcionará.");
+                 document.getElementById('voice-status').textContent = "Voz: Firebase ausente. Sincronização desativada.";
+                 document.getElementById('voice-status').classList.remove('text-red-400');
+                 document.getElementById('voice-status').classList.add('text-yellow-500');
+                 document.getElementById('start-voice-btn').disabled = false; // Permite iniciar a voz localmente
+                 
+                 updateUI(0); // Garante que o slide 0 seja exibido localmente
+                 return; // Sai antes da tentativa de inicialização do Firebase
+            }
+
+            // C. Inicializa Firebase (SÓ SE A CONFIG ESTIVER PRESENTE)
+            const app = initializeFirebase(firebaseConfig); 
+            db = getFirestore(app);
+            auth = getAuth(app);
+
+            // D. Autentica o Usuário
+            try {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                currentUserId = auth.currentUser?.uid || crypto.randomUUID();
+                
+                // E. Configura o Listener de Sincronização
+                setupSlideListener();
+                
+                // Inicializa o slide para garantir que o estado seja 0 se for a primeira vez
+                if (!isPresenterMode) {
+                    getDoc(getPresentationDocRef()).then(docSnap => {
+                        if (!docSnap.exists()) {
+                            moveSlideTo(0);
+                        }
+                    });
+                }
+
+
+            } catch (error) {
+                console.error("Erro de Autenticação Firebase:", error);
+                document.getElementById('voice-status').textContent = 'Voz: ERRO de Autenticação. Sincronização desativada.';
+                document.getElementById('voice-status').classList.remove('text-green-500');
+                document.getElementById('voice-status').classList.add('text-red-400');
+            }
+        }
+
+        window.addEventListener('load', startApplication); 
+
+    </script>
+</body>
+</html>
