@@ -3,9 +3,6 @@ body {
   font-family: 'Segoe UI', sans-serif;
   background: #121212;
   color: #fff;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
   padding: 2rem;
 }
 
@@ -14,20 +11,20 @@ h1 {
   margin-bottom: 1rem;
 }
 
-input[type="file"] {
-  margin-bottom: 1rem;
+input[type="file"],
+button {
   font-size: 1rem;
+  margin-right: 1rem;
+  margin-bottom: 1rem;
 }
 
 button {
   background: #ff5722;
   border: none;
-  padding: 1rem 2rem;
+  padding: 0.8rem 1.5rem;
   border-radius: 8px;
   color: white;
-  font-size: 1.2rem;
   cursor: pointer;
-  margin-bottom: 1rem;
   transition: background 0.3s ease;
 }
 
@@ -35,35 +32,54 @@ button:hover {
   background: #e64a19;
 }
 
-#controls {
+#mainLayout {
   display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  gap: 2rem;
+  margin-top: 2rem;
+  width: 100%;
+  max-width: 1200px;
 }
 
-#slideIndicator {
-  font-size: 1.2rem;
+#slideList {
+  flex: 1;
+  background: #1e1e1e;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+#slideDisplay {
+  flex: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.slideBox {
+  background: #333;
+  color: #fff;
+  padding: 1rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  line-height: 1.5;
+  min-height: 150px;
+  white-space: pre-wrap;
 }
 
 #thumbnails {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   gap: 0.5rem;
-  margin-bottom: 2rem;
-  max-width: 800px;
-  justify-content: center;
+  margin-top: 1rem;
 }
 
 .thumbnail {
-  background: #333;
+  background: #444;
   color: #fff;
   padding: 0.5rem;
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.8rem;
-  max-width: 120px;
-  max-height: 100px;
+  max-height: 80px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -72,15 +88,4 @@ button:hover {
 
 .thumbnail.active {
   border-color: #ff5722;
-}
-
-#slidePreview {
-  max-width: 600px;
-  text-align: left;
-  background: #1e1e1e;
-  padding: 1rem;
-  border-radius: 8px;
-  font-size: 1rem;
-  line-height: 1.5;
-  white-space: pre-wrap;
 }
