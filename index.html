@@ -312,7 +312,7 @@
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
                     </button>
                     <button id="next-slide-btn" class="p-2 text-primary rounded-full hover:bg-gray-700 transition duration-150 disabled:opacity-30 disabled:hover:bg-transparent" disabled>
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></path></svg>
                     </button>
                 </div>
             </div>
@@ -394,33 +394,34 @@
             const contentLength = slide.content.length;
             const totalLength = titleLength + contentLength;
 
-            // Fatores de Ponderação (ajustados para EQUALIZAR as fontes)
-            // Título: Pequeno peso (0.3) para garantir que títulos curtos fiquem grandes
-            // Conteúdo: Peso maior (0.7) para garantir que o corpo do texto se aproxime do título
-            const titleWeight = 0.3; 
-            const contentWeight = 0.7; 
+            // Fator de Ponderação ÚNICO (mais baixo, para permitir que as fontes cresçam mais)
+            const uniformWeight = 0.25; // Reduzido de 0.3 para 0.25
 
             // 2. Cálculo dos Tamanhos Finais
             
-            // Heurística de Tamanho Base (inversamente proporcional ao tamanho total do texto)
-            // O divisor (totalLength / 20) é ajustado para tornar a fonte base maior em geral.
-            let baseSize = Math.max(screenWidth / (totalLength / 20), 40);
-
+            // Heurística de Tamanho Base: Usa a largura da tela e o comprimento do texto com o peso uniforme
+            
             // Ajuste do Título: Inversamente proporcional ao tamanho do texto (mas com limite alto)
-            let titleSize = screenWidth / (titleLength * titleWeight);
+            let titleSize = screenWidth / (titleLength * uniformWeight);
             // Limite máximo para o título: 8vw
             titleSize = Math.min(titleSize, screenWidth * 0.08); 
             // Limite mínimo
             titleSize = Math.max(titleSize, 40); 
 
-            // Ajuste do Conteúdo (AQUI ESTÁ A MUDANÇA):
-            // Usa o 'titleWeight' para manter a proporção mais próxima, mas com o limite máximo mais alto
-            let contentSize = screenWidth / (contentLength * titleWeight);
-            // Novo Limite máximo para o corpo: 5vw (anteriormente 3.5vw)
-            contentSize = Math.min(contentSize, screenWidth * 0.05); 
+            // Ajuste do Conteúdo (MODIFICAÇÃO AQUI):
+            // Usa o 'uniformWeight' para manter a proporção mais próxima, e aumenta o limite máximo
+            let contentSize = screenWidth / (contentLength * uniformWeight);
+            // NOVO Limite máximo para o corpo: 7vw (anteriormente 5vw) - para que fique do mesmo tamanho do título
+            contentSize = Math.min(contentSize, screenWidth * 0.07); 
             // Limite mínimo
             contentSize = Math.max(contentSize, 30); 
             
+            // Se o conteúdo for muito curto (ex: 1 linha), forçamos o tamanho do título para equalizar
+            if (contentLength < 50) {
+                 contentSize = Math.min(contentSize, titleSize * 1.0); // Garante que o conteúdo não seja maior que o título
+                 contentSize = Math.max(contentSize, titleSize * 0.8); // Garante que o conteúdo seja no mínimo 80% do título
+            }
+
             // 3. Aplicação dos Estilos
             titleEl.style.fontSize = `${titleSize}px`;
             contentEl.style.fontSize = `${contentSize}px`;
