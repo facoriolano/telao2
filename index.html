@@ -271,9 +271,3 @@
         slideIndex--;
         atualizarTela();
         enviarSlideParaJanela();
-      }
-    });
-
-    window.addEventListener('message', function(event) {
-      if (event.data && typeof event.data.slideIndex === 'number') {
-        slideIndex
