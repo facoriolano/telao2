@@ -74,10 +74,14 @@ function renderThumbnails() {
 }
 
 function updateSlide() {
-  document.getElementById('slideIndicator').innerText = `Slide ${currentSlide + 1}`;
+  updateSlideDisplay();
   renderThumbnails();
   openProjectionWindow();
-  showPreview();
+}
+
+function updateSlideDisplay() {
+  document.getElementById('slideAtual').innerText = slides[currentSlide];
+  document.getElementById('slideProximo').innerText = slides[currentSlide + 1] || '';
 }
 
 function prevSlide() {
@@ -92,10 +96,6 @@ function nextSlide() {
     currentSlide++;
     updateSlide();
   }
-}
-
-function showPreview() {
-  document.getElementById('slidePreview').innerText = slides[currentSlide];
 }
 
 function openProjectionWindow() {
@@ -139,3 +139,8 @@ function startVoiceRecognition() {
 
   recognition.start();
 }
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight') nextSlide();
+  if (e.key === 'ArrowLeft') prevSlide();
+});
