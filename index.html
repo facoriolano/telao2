@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Apresentação por Voz (Modo Duplo)</title>
+    <!-- Removido o título estático para a tela do apresentador não ter texto desnecessário no browser tab -->
+    <title>Modo Apresentador | Sincronização por Voz</title> 
     
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -58,6 +59,11 @@
         }
         
         /* Otimização de Slides */
+        #presenter-interface {
+             /* Esconde a barra de título do browser o máximo possível na nova janela */
+             padding-top: 0;
+             margin-top: -10px; /* Truque para esconder um pouco mais */
+        }
         #presenter-screen {
             height: 100vh;
             width: 100vw;
@@ -89,6 +95,11 @@
             color: #E0E0E0; /* Texto em cinza claro */
         }
 
+        /* O indicador de slide foi removido da tela do apresentador, mas o ID do elemento 
+           original foi mantido no JS para evitar erros de referência no updateUI */
+        #slide-index-display {
+            display: none; 
+        }
 
         /* Estilo da Miniatura de Slide (Pré-visualização de Conteúdo) */
         .thumbnail-item {
@@ -303,11 +314,12 @@
         </div>
     </div>
 
-    <!-- Interface do Apresentador (Mantida a funcionalidade, cores ajustadas) -->
+    <!-- Interface do Apresentador (Corrigida) -->
     <div id="presenter-interface" class="hidden">
         <div id="presenter-screen" class="p-10 text-white">
             <div id="slide-container">
-                <p id="slide-index-display" class="text-3xl font-light text-primary mb-6 opacity-70"></p>
+                <!-- REMOVIDO: O elemento de exibição do índice do slide (slide-index-display) foi removido visualmente -->
+                <p id="slide-index-display" class="text-3xl font-light text-primary mb-6 opacity-70" style="display: none;"></p>
                 <h1 id="slide-title" class="text-7xl font-extrabold mb-10 text-center transition-opacity duration-300">Carregando Apresentação...</h1>
                 <div id="presenter-content" class="text-gray-200 text-center text-2xl transition-opacity duration-300">
                     Aguardando sincronização do Diretor.
@@ -423,7 +435,8 @@
                     // Atualiza o conteúdo após o fade-out
                     titleEl.textContent = currentSlide.title;
                     contentEl.textContent = currentSlide.content;
-                    document.getElementById('slide-index-display').textContent = `Slide ${safeIndex + 1} de ${slidesData.length}`;
+                    // O elemento slide-index-display está oculto por CSS, mas atualizamos seu conteúdo no JS para evitar erros
+                    document.getElementById('slide-index-display').textContent = `Slide ${safeIndex + 1} de ${slidesData.length}`; 
 
                     // Aplica a transição de fade-in
                     titleEl.style.opacity = '1';
@@ -542,8 +555,8 @@
                 console.log("Slides carregados do TXT:", slidesData);
                 renderThumbnails();
                 moveSlideTo(0); // Usa a função unificada de movimento
-                document.getElementById('voice-status').textContent = "Apresentação TXT carregada. Pronto para começar.";
                 document.getElementById('start-voice-btn').disabled = false;
+                document.getElementById('voice-status').textContent = "Apresentação TXT carregada. Pronto para começar.";
             };
             reader.readAsText(file);
         }
@@ -665,6 +678,9 @@
                 const presenterUrl = window.location.href.split('?')[0] + '?mode=presenter';
                 // Abre em uma nova janela de 1280x720 (melhor para tela cheia)
                 window.open(presenterUrl, 'PresenterScreen', 'width=1280,height=720,resizable=yes');
+                
+                // Mude o título do documento pai (Diretor) para refletir o modo
+                document.title = "Modo Diretor | Sincronização por Voz";
             });
 
             // Event Listener para iniciar/parar o reconhecimento
@@ -768,9 +784,12 @@
             if (isPresenterMode) {
                 document.getElementById('director-interface').classList.add('hidden');
                 document.getElementById('presenter-interface').classList.remove('hidden');
+                // Altera o título da aba/janela para ser o mais limpo possível na tela do apresentador
+                document.title = ""; 
             } else {
                 document.getElementById('director-interface').classList.remove('hidden'); 
                 document.getElementById('presenter-interface').classList.add('hidden');
+                document.title = "Modo Diretor | Sincronização por Voz";
             }
 
             // 3. Inicializa componentes locais e Listeners
@@ -817,15 +836,17 @@
                 } catch (error) {
                     console.error("Falha na inicialização/autenticação do Firebase. Usando LocalStorage.", error);
                     isFirebaseAvailable = false;
-                    document.getElementById('voice-status').textContent = 'Voz: Firebase Indisponível. Usando LocalStorage.';
+                    document.getElementById('voice-status').textContent = 'Voz: ERRO de Listener. Usando LocalStorage.';
                     document.getElementById('voice-status').classList.remove('text-red-400');
                     document.getElementById('voice-status').classList.add('text-yellow-500');
                 }
             } else {
                 console.warn("Firebase Config ausente. Usando LocalStorage para sincronização.");
-                document.getElementById('voice-status').textContent = "Voz: Firebase ausente. Usando LocalStorage.";
-                document.getElementById('voice-status').classList.remove('text-red-400');
-                document.getElementById('voice-status').classList.add('text-yellow-500');
+                if (!isPresenterMode) {
+                    document.getElementById('voice-status').textContent = "Voz: Firebase ausente. Usando LocalStorage.";
+                    document.getElementById('voice-status').classList.remove('text-red-400');
+                    document.getElementById('voice-status').classList.add('text-yellow-500');
+                }
             }
             
             // 5. Carrega o índice do slide, priorizando o LocalStorage (que é mais confiável em falha)
