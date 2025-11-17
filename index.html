@@ -1,161 +1,562 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Apresentação por Voz</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-    body { font-family: 'Inter', sans-serif; background-color: #1A103A; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apresentador com Reconhecimento de Voz</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Define a fonte e o fundo inspirados nos mockups */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a1a2e; /* Cor escura de fundo */
+            color: #ffffff;
+        }
 
-    :root {
-      --color-primary: #fcd34d;
-      --color-background: #1A103A;
-    }
+        /* Estilo para a tela de apresentação */
+        .slide-display {
+            font-size: 60px; /* Requisito 1: Fonte fixa 60 */
+            line-height: 1.4;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 2rem;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            box-sizing: border-box;
+            color: #f7b32b; /* Cor de destaque (amarelo) para o texto */
+            background-color: #1a1a2e;
+        }
 
-    #presenter-screen {
-      height: 100vh;
-      width: 100vw;
-      background-color: var(--color-background);
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      padding: 5vh 8vw;
-      box-sizing: border-box;
-    }
+        /* Classe para texto não-destacado (como o texto 'Próximo Slide') */
+        .text-subtle {
+            color: #b0c4de; /* Cinza claro/azul suave */
+        }
 
-    #slide-title {
-      font-size: 60px;
-      color: var(--color-primary);
-      font-weight: 800;
-      margin-bottom: 5vh;
-      text-align: center;
-      max-width: 100%;
-    }
-
-    #presenter-content {
-      font-size: 60px;
-      color: #E0E0E0;
-      text-align: center;
-      max-width: 100%;
-      line-height: 1.4;
-    }
-  </style>
+        /* Estilo para o modo de tela cheia */
+        .fullscreen-mode {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1000;
+        }
+    </style>
 </head>
-<body class="text-white">
+<body class="p-4 md:p-8">
 
-<!-- Modo Diretor -->
-<div class="p-6 max-w-4xl mx-auto">
-  <h1 class="text-2xl font-bold text-yellow-400 mb-4">Modo Diretor</h1>
-  <input type="file" id="file-input" accept=".txt" class="mb-4 text-sm text-gray-300 file:bg-yellow-400 file:text-black file:rounded-full file:px-4 file:py-2"/>
-  <div class="flex gap-4 mb-4">
-    <button id="start-voice-btn" class="px-4 py-2 bg-green-600 rounded disabled:bg-gray-600" disabled>Iniciar Voz</button>
-    <button id="open-presenter-btn" class="px-4 py-2 bg-gray-500 rounded">Abrir Tela do Apresentador</button>
-  </div>
-  <p id="voice-status" class="text-sm text-red-400 mb-2">Voz: Desligado</p>
-  <p id="last-transcript" class="text-sm text-gray-400 mb-4">Transcrição: ---</p>
-  <div id="slide-grid" class="grid grid-cols-6 gap-4"></div>
-</div>
+    <!-- Mensagem de Status (para inicialização e erros) -->
+    <div id="status-message" class="text-center text-sm text-yellow-400 mb-4 hidden"></div>
 
-<!-- Modo Apresentador -->
-<div id="presenter-interface" class="hidden">
-  <div id="presenter-screen">
-    <h1 id="slide-title">Carregando...</h1>
-    <div id="presenter-content">Aguardando sincronização...</div>
-  </div>
-</div>
+    <!-- Interface Principal do Aplicativo -->
+    <div id="app-container" class="space-y-6">
 
-<script>
-let slidesData = [];
-let currentSlideIndex = 0;
-let recognition = null;
-const isPresenterMode = window.location.search.includes('mode=presenter');
+        <!-- Controles e Importação de Arquivo -->
+        <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
+            <h1 class="text-2xl font-bold mb-4 text-yellow-400">Controles da Apresentação</h1>
+            
+            <div class="flex flex-wrap items-end gap-4 mb-4">
+                <!-- Importar TXT -->
+                <div class="flex-grow">
+                    <label for="file-input" class="block text-sm font-medium mb-1">
+                        1. Carregar Arquivo TXT (Requisito 2)
+                    </label>
+                    <input type="file" id="file-input" accept=".txt" class="block w-full text-sm text-white bg-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-500 file:text-black hover:file:bg-yellow-600 rounded-lg p-1.5 cursor-pointer">
+                </div>
 
-function generateTrigger(text) {
-  const words = text.replace(/[^\p{L}\s]/gu, "").trim().split(/\s+/);
-  return words.slice(-4).join(" ") + ".";
-}
+                <!-- Botão de Apresentação -->
+                <button id="open-display-btn" class="bg-yellow-500 text-black font-bold py-2 px-4 rounded-full transition hover:bg-yellow-600 shadow-md">
+                    Abrir Tela de Apresentação (Público)
+                </button>
+            </div>
 
-function updateUI(index) {
-  currentSlideIndex = index;
-  const slide = slidesData[index];
-  document.getElementById('slide-title').textContent = slide.title;
-  document.getElementById('presenter-content').textContent = slide.content;
-  renderSlideGrid();
-}
+            <!-- Controles do Reconhecimento de Voz -->
+            <div class="mt-4 border-t border-gray-700 pt-4">
+                <h2 class="text-xl font-semibold mb-2">2. Reconhecimento de Voz (Requisito 3)</h2>
+                <p id="voice-status" class="text-sm italic text-red-400 mb-3">
+                    Status: Não iniciado. (Necessita de Chrome/Edge e microfone)
+                </p>
+                <button id="toggle-voice-btn" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-full transition hover:bg-blue-700 shadow-md disabled:opacity-50" disabled>
+                    Iniciar Reconhecimento
+                </button>
+                <div class="mt-2 text-sm text-gray-400">
+                    O avanço automático ocorrerá ao dizer as últimas 4 palavras do slide atual.
+                </div>
+            </div>
+        </div>
 
-function renderSlideGrid() {
-  const grid = document.getElementById('slide-grid');
-  grid.innerHTML = '';
-  slidesData.forEach((s, i) => {
-    const btn = document.createElement('div');
-    btn.className = `p-2 rounded bg-gray-800 cursor-pointer ${i === currentSlideIndex ? 'border-2 border-yellow-400' : ''}`;
-    btn.innerHTML = `<div class="font-bold">${String(i + 1).padStart(2, '0')}</div>
-                     <div class="text-sm">${s.title}</div>`;
-    btn.onclick = () => updateUI(i);
-    grid.appendChild(btn);
-  });
-}
+        <!-- Visão Geral dos Slides (MOCKUP2.png layout - parcial) -->
+        <div id="presentation-view" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-function initializeSpeechRecognition() {
-  if (!('webkitSpeechRecognition' in window)) {
-    document.getElementById('voice-status').textContent = "ERRO: Navegador não suporta reconhecimento de voz.";
-    return;
-  }
-  recognition = new webkitSpeechRecognition();
-  recognition.continuous = true;
-  recognition.interimResults = false;
-  recognition.lang = 'pt-BR';
+            <!-- Coluna 1: Todos os Slides (Para o operador) -->
+            <div class="lg:col-span-1 bg-gray-800 p-4 rounded-xl shadow-lg max-h-[80vh] overflow-y-auto">
+                <h2 class="text-xl font-bold mb-3 text-yellow-400">Todos os Slides (<span id="slide-count">0</span>)</h2>
+                <div id="slides-grid" class="grid grid-cols-5 gap-2">
+                    <!-- Slides em miniatura serão injetados aqui -->
+                    <div class="text-center p-2 bg-gray-700 rounded-lg text-sm">Carregue um .txt</div>
+                </div>
+            </div>
 
-  recognition.onstart = () => document.getElementById('voice-status').textContent = "Voz: ATIVA";
-  recognition.onend = () => document.getElementById('voice-status').textContent = "Voz: Desligado";
-  recognition.onresult = (event) => {
-    const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
-    document.getElementById('last-transcript').textContent = `Transcrição: "${transcript}"`;
-    const nextSlideIndex = currentSlideIndex + 1;
-    const expectedTrigger = slidesData[nextSlideIndex]?.trigger?.toLowerCase().trim();
-    if (expectedTrigger && transcript.includes(expectedTrigger)) {
-      updateUI(nextSlideIndex);
-    }
-  };
-}
+            <!-- Coluna 2 e 3: Slide Atual e Próximo -->
+            <div class="lg:col-span-2 space-y-4">
+                
+                <!-- Slide Atual -->
+                <div class="aspect-video p-4 rounded-xl border-4 border-yellow-500 bg-purple-900 shadow-2xl">
+                    <div class="text-center mb-2">
+                        <span id="current-slide-index" class="text-4xl font-extrabold text-yellow-500">0</span>
+                        <span class="text-4xl font-extrabold text-white">/</span>
+                        <span class="text-2xl font-bold text-gray-400" id="total-slides-display">0</span>
+                    </div>
+                    <div id="current-slide-preview" class="slide-display h-[calc(100%-4rem)] text-3xl p-4 text-center">
+                        SLIDE ATUAL (Aguardando Texto)
+                    </div>
+                </div>
 
-document.getElementById('file-input').addEventListener('change', (event) => {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const text = e.target.result;
-    const blocks = text.split(/\n\s*\n/).filter(block => block.trim().length > 0);
-    slidesData = blocks.map((content, i) => {
-      const title = content.split('\n')[0].trim();
-      const trigger = (i < blocks.length - 1) ? generateTrigger(content) : "";
-      return { title, content: content.trim(), trigger };
-    });
-    updateUI(0);
-    document.getElementById('start-voice-btn').disabled = true;
-    if (!isPresenterMode) document.getElementById('start-voice-btn').disabled = false;
-  };
-  reader.readAsText(file);
-});
+                <!-- Próximo Slide -->
+                <div class="aspect-video p-4 rounded-xl border-2 border-gray-600 bg-gray-700 shadow-lg">
+                    <h3 class="text-xl font-semibold mb-2 text-subtle">PRÓXIMO SLIDE</h3>
+                    <div id="next-slide-preview" class="slide-display text-subtle h-[calc(100%-3rem)] text-xl p-3 text-center">
+                        NENHUM PRÓXIMO SLIDE
+                    </div>
+                </div>
 
-document.getElementById('start-voice-btn').addEventListener('click', () => {
-  if (!recognition) initializeSpeechRecognition();
-  recognition.start();
-});
+                <!-- Botões de Navegação Manual -->
+                <div class="flex justify-center space-x-4 pt-2">
+                    <button id="prev-slide-btn" class="p-3 rounded-full bg-gray-700 hover:bg-gray-600 transition disabled:opacity-30" disabled>
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    </button>
+                    <button id="next-slide-btn" class="p-3 rounded-full bg-gray-700 hover:bg-gray-600 transition disabled:opacity-30" disabled>
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
 
-document.getElementById('open-presenter-btn').addEventListener('click', () => {
-  const presenterUrl = window.location.href.split('?')[0] + '?mode=presenter';
-  window.open(presenterUrl, 'PresenterScreen', 'width=800,height=600,resizable=yes');
-});
+    </div>
 
-window.addEventListener('load', () => {
-  if (isPresenterMode) {
-    document.getElementById('presenter-interface').classList.remove('hidden');
-  }
-});
-</script>
+    <!-- Tela de Apresentação (JANELA.png layout) - Inicialmente oculta -->
+    <div id="presenter-display" class="fullscreen-mode hidden slide-display text-8xl">
+        <!-- O conteúdo é injetado dinamicamente -->
+    </div>
+
+
+    <script type="module">
+        // Variáveis globais do ambiente Canvas (necessárias para a inicialização)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // ** Inicialização Firebase (Mínima e Obrigatória) **
+        // Apenas para satisfazer o ambiente de execução, a lógica de persistência de dados não é necessária.
+        let app, auth;
+        const initFirebase = async () => {
+            const statusEl = document.getElementById('status-message');
+            statusEl.classList.remove('hidden');
+
+            if (Object.keys(firebaseConfig).length > 0) {
+                try {
+                    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
+                    const { getAuth, signInWithCustomToken, signInAnonymously } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
+                    
+                    app = initializeApp(firebaseConfig);
+                    auth = getAuth(app);
+
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                        statusEl.textContent = 'Autenticado no ambiente Canvas. Aplicativo pronto.';
+                    } else {
+                        await signInAnonymously(auth);
+                        statusEl.textContent = 'Sessão anônima iniciada. Aplicativo pronto.';
+                    }
+                } catch (error) {
+                    console.error("Erro de inicialização do Firebase:", error);
+                    statusEl.textContent = 'Erro ao inicializar o Firebase. Verifique o console.';
+                }
+            } else {
+                statusEl.textContent = 'Executando em modo local. Aplicativo pronto.';
+            }
+
+            // Inicia a lógica principal do app
+            setupApp();
+            statusEl.classList.add('hidden'); // Oculta a mensagem após o setup
+        };
+
+
+        // ** Lógica Principal do Aplicativo **
+        
+        let slides = [];
+        let currentSlideIndex = 0;
+        let recognition = null;
+        let isListening = false;
+        
+        // Elementos DOM
+        const el = (id) => document.getElementById(id);
+        
+        // --- FUNÇÕES DE LÓGICA DE APRESENTAÇÃO ---
+
+        /**
+         * Divide o texto em slides.
+         * Tenta dividir primeiro por parágrafos (duas quebras de linha) e depois por limite de caracteres.
+         * @param {string} text - O conteúdo completo do arquivo TXT.
+         * @returns {string[]} Um array de strings, onde cada string é um slide.
+         */
+        function splitTextIntoSlides(text) {
+            const MAX_CHARS_PER_SLIDE = 300; // Limite de caracteres razoável para fonte 60px
+            const tempSlides = [];
+
+            // 1. Dividir por parágrafos (duas quebras de linha)
+            const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim() !== '');
+
+            for (const p of paragraphs) {
+                let currentChunk = p.trim();
+                
+                // Se o parágrafo for muito longo, tente dividir por frases ou simplesmente por chunk.
+                while (currentChunk.length > MAX_CHARS_PER_SLIDE) {
+                    // Tente encontrar um ponto de divisão limpo (fim de frase ou perto do limite)
+                    let splitPoint = MAX_CHARS_PER_SLIDE;
+                    
+                    // Procure por um ponto final ou quebra de linha próxima antes do limite
+                    let cleanBreak = currentChunk.substring(0, MAX_CHARS_PER_SLIDE).lastIndexOf('.');
+                    if (cleanBreak === -1) cleanBreak = currentChunk.substring(0, MAX_CHARS_PER_SLIDE).lastIndexOf('\n');
+                    
+                    if (cleanBreak > MAX_CHARS_PER_SLIDE * 0.7) { // Garante que a quebra não está muito no início
+                        splitPoint = cleanBreak + 1;
+                    }
+
+                    // Adiciona o primeiro pedaço
+                    tempSlides.push(currentChunk.substring(0, splitPoint).trim());
+                    // Atualiza o restante
+                    currentChunk = currentChunk.substring(splitPoint).trim();
+                }
+
+                // Adiciona o pedaço restante (ou o parágrafo inteiro se for curto)
+                if (currentChunk) {
+                    tempSlides.push(currentChunk);
+                }
+            }
+
+            // Garante que não haja slides vazios
+            return tempSlides.filter(s => s.trim().length > 0);
+        }
+
+        /**
+         * Atualiza a interface com o slide atual.
+         * @param {number} index - O índice do slide a ser exibido.
+         */
+        function updateSlide(index) {
+            currentSlideIndex = Math.max(0, Math.min(index, slides.length - 1));
+            
+            const currentText = slides[currentSlideIndex] || "Nenhum slide para exibir.";
+            const nextText = slides[currentSlideIndex + 1] || "Fim da Apresentação.";
+
+            // 1. Atualiza o Modo de Controle
+            el('current-slide-preview').innerHTML = currentText.replace(/\n/g, '<br>');
+            el('next-slide-preview').innerHTML = nextText.replace(/\n/g, '<br>');
+            el('current-slide-index').textContent = slides.length > 0 ? (currentSlideIndex + 1).toString().padStart(2, '0') : '0';
+            el('total-slides-display').textContent = slides.length.toString().padStart(2, '0');
+            el('prev-slide-btn').disabled = currentSlideIndex === 0 || slides.length === 0;
+            el('next-slide-btn').disabled = currentSlideIndex >= slides.length - 1 || slides.length === 0;
+
+            // 2. Atualiza a Tela de Apresentação (se estiver aberta)
+            if (el('presenter-display').classList.contains('fullscreen-mode')) {
+                el('presenter-display').innerHTML = currentText.replace(/\n/g, '<br>');
+            }
+
+            // 3. Atualiza a grade de slides
+            updateSlidesGrid();
+        }
+
+        /**
+         * Avança para o próximo slide, se houver.
+         */
+        function nextSlide() {
+            if (currentSlideIndex < slides.length - 1) {
+                updateSlide(currentSlideIndex + 1);
+            } else {
+                showMessage("Fim da apresentação alcançado.", "text-green-400");
+                // Opcional: Para o reconhecimento de voz ao fim da apresentação
+                if (isListening) toggleVoiceRecognition();
+            }
+        }
+
+        /**
+         * Mostra uma mensagem temporária na interface de controle.
+         * @param {string} msg - A mensagem a ser mostrada.
+         * @param {string} colorClass - Classe Tailwind para a cor (ex: 'text-red-400').
+         */
+        function showMessage(msg, colorClass) {
+            const status = el('voice-status');
+            status.textContent = msg;
+            status.className = `text-sm italic mb-3 ${colorClass}`;
+            setTimeout(() => {
+                // Restaura o status de voz
+                status.textContent = isListening ? 'Status: Ouvindo...' : 'Status: Reconhecimento parado.';
+                status.className = `text-sm italic mb-3 ${isListening ? 'text-green-400' : 'text-red-400'}`;
+            }, 3000);
+        }
+
+        /**
+         * Cria e atualiza a grade de navegação de slides.
+         */
+        function updateSlidesGrid() {
+            const gridEl = el('slides-grid');
+            el('slide-count').textContent = slides.length;
+            gridEl.innerHTML = '';
+
+            if (slides.length === 0) {
+                gridEl.innerHTML = '<div class="col-span-5 text-center p-4 text-gray-400">Carregue um arquivo .txt para começar.</div>';
+                return;
+            }
+
+            slides.forEach((slideText, index) => {
+                const isCurrent = index === currentSlideIndex;
+                const slideNumber = (index + 1).toString().padStart(2, '0');
+                const div = document.createElement('div');
+                div.className = `text-center p-2 rounded-lg text-sm font-bold transition cursor-pointer ${
+                    isCurrent ? 'bg-yellow-500 text-black ring-4 ring-yellow-300' : 'bg-gray-700 hover:bg-gray-600'
+                }`;
+                div.textContent = slideNumber;
+                div.onclick = () => updateSlide(index);
+                gridEl.appendChild(div);
+            });
+        }
+
+        // --- RECONHECIMENTO DE VOZ (SpeechRecognition API) ---
+
+        /**
+         * Verifica se as últimas 4 palavras do slide foram ditas.
+         * @param {string} transcript - O texto reconhecido pelo microfone.
+         */
+        function checkLastFourWords(transcript) {
+            if (slides.length === 0) return;
+
+            const currentSlideText = slides[currentSlideIndex].toLowerCase().replace(/[^a-z0-9\s]/g, '');
+            // Obtém as últimas 4 palavras do slide
+            const slideWords = currentSlideText.split(/\s+/).filter(w => w.length > 0);
+            const lastFourWords = slideWords.slice(-4).join(' ');
+
+            const spokenText = transcript.toLowerCase().replace(/[^a-z0-9\s]/g, '');
+            
+            // Requisito 3: Verifica se a transcrição contém as últimas 4 palavras
+            if (lastFourWords.length > 0 && spokenText.includes(lastFourWords)) {
+                showMessage(`COMANDO RECONHECIDO! "${lastFourWords}" -> Avançando...`, "text-green-400");
+                console.log(`Comando de avanço detectado: "${lastFourWords}"`);
+                nextSlide();
+            } else {
+                console.log(`Discurso: "${transcript}". Aguardando: "${lastFourWords}".`);
+            }
+        }
+
+        /**
+         * Inicia/Para o reconhecimento de voz.
+         */
+        function toggleVoiceRecognition() {
+            const btn = el('toggle-voice-btn');
+            const status = el('voice-status');
+
+            if (!recognition) {
+                // Verifica a disponibilidade da API
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (!SpeechRecognition) {
+                    status.textContent = 'Erro: O reconhecimento de voz não é suportado pelo seu navegador.';
+                    status.className = 'text-sm italic mb-3 text-red-400';
+                    btn.disabled = true;
+                    return;
+                }
+                
+                recognition = new SpeechRecognition();
+                recognition.continuous = false; // Não precisa ser contínuo, reinicia após o resultado
+                recognition.interimResults = false;
+                recognition.lang = 'pt-BR'; // Define o idioma para Português do Brasil
+
+                // Evento de Resultado (quando o usuário para de falar)
+                recognition.onresult = (event) => {
+                    const transcript = Array.from(event.results)
+                        .map(result => result[0].transcript)
+                        .join('');
+                    
+                    showMessage(`Detectado: ${transcript}`, "text-yellow-400");
+                    checkLastFourWords(transcript);
+                };
+
+                // Evento de Fim (garante que o reconhecimento recomece se estiver ativo)
+                recognition.onend = () => {
+                    if (isListening) {
+                        recognition.start(); // Reinicia a escuta
+                    }
+                };
+
+                // Evento de Erro
+                recognition.onerror = (event) => {
+                    console.error('Erro de Reconhecimento de Voz:', event.error);
+                    if (event.error === 'not-allowed') {
+                        showMessage('Permissão do microfone negada. Por favor, habilite o microfone.', "text-red-500");
+                    } else if (event.error === 'no-speech') {
+                         // Isso é comum quando não há fala, não precisa parar. Apenas reinicia.
+                         if (isListening) recognition.start();
+                    } else {
+                        showMessage(`Erro de voz: ${event.error}`, "text-red-500");
+                        toggleVoiceRecognition(); // Tenta parar e resetar
+                    }
+                };
+            }
+
+            if (!isListening) {
+                // Iniciar a escuta
+                isListening = true;
+                recognition.start();
+                btn.textContent = 'Parar Reconhecimento';
+                btn.classList.replace('bg-blue-600', 'bg-red-600');
+                status.textContent = 'Status: Ouvindo...';
+                status.className = 'text-sm italic mb-3 text-green-400';
+            } else {
+                // Parar a escuta
+                isListening = false;
+                recognition.stop();
+                btn.textContent = 'Iniciar Reconhecimento';
+                btn.classList.replace('bg-red-600', 'bg-blue-600');
+                status.textContent = 'Status: Reconhecimento parado.';
+                status.className = 'text-sm italic mb-3 text-red-400';
+            }
+        }
+
+        // --- FUNÇÕES DE EVENTOS E SETUP ---
+
+        /**
+         * Manipula o carregamento do arquivo TXT.
+         */
+        function loadTextFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const text = e.target.result;
+                slides = splitTextIntoSlides(text);
+                currentSlideIndex = 0;
+                
+                updateSlide(0);
+
+                el('prev-slide-btn').disabled = true;
+                el('next-slide-btn').disabled = slides.length <= 1;
+                el('toggle-voice-btn').disabled = slides.length === 0;
+
+                showMessage(`Arquivo carregado! ${slides.length} slides criados.`, "text-green-400");
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        /**
+         * Abre a tela de apresentação em uma nova janela.
+         */
+        function openPresenterDisplay() {
+            if (slides.length === 0) {
+                showMessage("Carregue o arquivo TXT primeiro!", "text-red-400");
+                return;
+            }
+            
+            // Conteúdo HTML/CSS/JS da janela de apresentação (Modo Tela Cheia)
+            const presenterContent = `
+                <!DOCTYPE html>
+                <html lang="pt-BR">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Display de Apresentação</title>
+                    <style>
+                        body {
+                            margin: 0;
+                            height: 100vh;
+                            background-color: #1a1a2e;
+                            color: #f7b32b;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            overflow: hidden;
+                        }
+                        .slide-content {
+                            font-family: 'Inter', sans-serif;
+                            font-size: 60px; /* Requisito 1 */
+                            line-height: 1.4;
+                            text-align: center;
+                            padding: 2vw;
+                            max-width: 90vw;
+                            max-height: 90vh;
+                            box-sizing: border-box;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div id="slide-content" class="slide-content">
+                        ${slides[currentSlideIndex].replace(/\n/g, '<br>')}
+                    </div>
+                    <script>
+                        // Função para receber o novo conteúdo do slide
+                        window.updateSlideContent = (newText) => {
+                            document.getElementById('slide-content').innerHTML = newText.replace(/\\n/g, '<br>');
+                        };
+                        // Permite que a janela pai notifique a mudança de slide
+                        window.addEventListener('beforeunload', () => {
+                            if (window.opener && !window.opener.closed) {
+                                window.opener.postMessage({ type: 'DISPLAY_CLOSED' }, window.location.origin);
+                            }
+                        });
+                    </script>
+                </body>
+                </html>
+            `;
+
+            // Abrir a nova janela
+            const presentationWindow = window.open("", "PresenterDisplay", "width=800,height=600,resizable=yes");
+            if (presentationWindow) {
+                presentationWindow.document.write(presenterContent);
+                presentationWindow.document.close();
+                
+                // Configura um listener para que a janela de controle possa atualizar o display
+                window.presentationWindow = presentationWindow;
+
+                // Listener para a mensagem de fechamento da janela de display (se o usuário fechar)
+                window.addEventListener('message', (event) => {
+                    if (event.data.type === 'DISPLAY_CLOSED') {
+                        window.presentationWindow = null;
+                        console.log("Tela de apresentação fechada.");
+                    }
+                });
+
+                // Sobrescreve updateSlide para também enviar o conteúdo para a nova janela
+                const originalUpdateSlide = updateSlide;
+                window.updateSlide = (index) => {
+                    originalUpdateSlide(index);
+                    const newText = slides[index] || "Fim da Apresentação.";
+                    if (window.presentationWindow && !window.presentationWindow.closed) {
+                        // Chama a função definida na janela pop-up
+                        window.presentationWindow.updateSlideContent(newText);
+                    }
+                };
+            } else {
+                showMessage("Falha ao abrir a janela pop-up. Verifique as configurações de bloqueio.", "text-red-500");
+            }
+        }
+        
+        /**
+         * Configuração inicial dos event listeners.
+         */
+        function setupApp() {
+            el('file-input').addEventListener('change', loadTextFile);
+            el('prev-slide-btn').addEventListener('click', () => updateSlide(currentSlideIndex - 1));
+            el('next-slide-btn').addEventListener('click', nextSlide);
+            el('toggle-voice-btn').addEventListener('click', toggleVoiceRecognition);
+            el('open-display-btn').addEventListener('click', openPresenterDisplay);
+
+            updateSlide(0); // Inicializa a visão
+        }
+
+        // Inicia a aplicação após o carregamento do DOM e a inicialização do Firebase (se aplicável)
+        initFirebase();
+    </script>
 </body>
 </html>
