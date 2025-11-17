@@ -101,48 +101,6 @@
     .section {
       margin-bottom: 10px;
     }
-
-    #apresentacao {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: #0a1a2f;
-      color: #ffffff;
-      font-family: Arial, sans-serif;
-      padding: 60px;
-      box-sizing: border-box;
-      z-index: 9999;
-    }
-
-    #slideTela h1 {
-      color: #fdd835;
-      font-size: 48px;
-      margin-bottom: 40px;
-    }
-
-    #slideTela p {
-      font-size: 28px;
-      line-height: 1.6;
-    }
-
-    #apresentacao button {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      font-size: 20px;
-      padding: 10px;
-      background-color: #333;
-      color: #fff;
-      border: none;
-      cursor: pointer;
-    }
-
-    #apresentacao button:hover {
-      background-color: #555;
-    }
   </style>
 </head>
 <body>
@@ -170,14 +128,10 @@
     </div>
   </div>
 
-  <div id="apresentacao">
-    <div id="slideTela"></div>
-    <button onclick="fecharApresentacao()">Sair</button>
-  </div>
-
   <script>
     let slides = [];
     let slideIndex = 0;
+    let popupWindow = null;
 
     function abrirTXT() {
       const fileInput = document.getElementById('fileInput');
@@ -193,6 +147,7 @@
         slides = texto.split('---').map(s => s.trim()).filter(s => s.length > 0);
         mostrarMiniaturas();
         atualizarTela();
+        abrirJanelaApresentacao();
       };
       reader.readAsText(file);
     }
@@ -210,7 +165,6 @@
         miniatura.onclick = () => {
           slideIndex = index;
           atualizarTela();
-          abrirTelaCheia(index);
         };
         container.appendChild(miniatura);
       });
@@ -229,37 +183,74 @@
       });
     }
 
-    function abrirTelaCheia(index) {
-      slideIndex = index;
-      const texto = slides[slideIndex].replace(/\n/g, '<br>');
-      const titulo = texto.split('<br>')[0];
-      const corpo = texto.split('<br>').slice(1).join('<br>');
-      document.getElementById('slideTela').innerHTML = `<h1>${titulo}</h1><p>${corpo}</p>`;
-      document.getElementById('apresentacao').style.display = 'block';
-    }
+    function abrirJanelaApresentacao() {
+      popupWindow = window.open('', '', 'width=800,height=600');
+      if (popupWindow) {
+        popupWindow.document.write(`
+          <html>
+            <head>
+              <title>Apresentação</title>
+              <style>
+                body {
+                  background-color: #0a1a2f;
+                  color: #ffffff;
+                  font-family: Arial, sans-serif;
+                  padding: 60px;
+                  font-size: 28px;
+                  line-height: 1.6;
+                }
+                h1 {
+                  color: #fdd835;
+                  font-size: 48px;
+                  margin-bottom: 40px;
+                }
+                p {
+                  font-size: 28px;
+                }
+              </style>
+            </head>
+            <body>
+              <div id="conteudo"></div>
+              <script>
+                let slides = ${JSON.stringify(slides)};
+                let slideIndex = 0;
 
-    function fecharApresentacao() {
-      document.getElementById('apresentacao').style.display = 'none';
+                function atualizarSlide() {
+                  const texto = slides[slideIndex].replace(/\\n/g, '<br>');
+                  const titulo = texto.split('<br>')[0];
+                  const corpo = texto.split('<br>').slice(1).join('<br>');
+                  document.getElementById('conteudo').innerHTML = '<h1>' + titulo + '</h1><p>' + corpo + '</p>';
+                }
+
+                document.addEventListener('keydown', function(e) {
+                  if (e.key === 'ArrowRight' && slideIndex < slides.length - 1) {
+                    slideIndex++;
+                    atualizarSlide();
+                  } else if (e.key === 'ArrowLeft' && slideIndex > 0) {
+                    slideIndex--;
+                    atualizarSlide();
+                  }
+                });
+
+                atualizarSlide();
+              <\/script>
+            </body>
+          </html>
+        `);
+        popupWindow.document.close();
+      } else {
+        alert('Pop-up bloqueado. Ative pop-ups para visualizar os slides no telão.');
+      }
     }
 
     document.addEventListener('keydown', function(e) {
-      const tela = document.getElementById('apresentacao');
-      if (tela.style.display === 'block') {
-        if (e.key === 'ArrowRight' && slideIndex < slides.length - 1) {
-          slideIndex++;
-          abrirTelaCheia(slideIndex);
-        } else if (e.key === 'ArrowLeft' && slideIndex > 0) {
-          slideIndex--;
-          abrirTelaCheia(slideIndex);
-        }
-      } else {
-        if (e.key === 'ArrowRight' && slideIndex < slides.length - 1) {
-          slideIndex++;
-          atualizarTela();
-        } else if (e.key === 'ArrowLeft' && slideIndex > 0) {
-          slideIndex--;
-          atualizarTela();
-        }
+      if (slides.length === 0) return;
+      if (e.key === 'ArrowRight' && slideIndex < slides.length - 1) {
+        slideIndex++;
+        atualizarTela();
+      } else if (e.key === 'ArrowLeft' && slideIndex > 0) {
+        slideIndex--;
+        atualizarTela();
       }
     });
   </script>
