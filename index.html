@@ -235,9 +235,11 @@
                   if (e.key === 'ArrowRight' && slideIndex < slides.length - 1) {
                     slideIndex++;
                     atualizarSlide();
+                    window.opener.postMessage({ slideIndex }, '*');
                   } else if (e.key === 'ArrowLeft' && slideIndex > 0) {
                     slideIndex--;
                     atualizarSlide();
+                    window.opener.postMessage({ slideIndex }, '*');
                   }
                 });
 
@@ -271,6 +273,6 @@
         enviarSlideParaJanela();
       }
     });
-  </script>
-</body>
-</html>
+
+    window.addEventListener('message', function(event) {
+      if (event.data
