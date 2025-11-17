@@ -139,12 +139,15 @@
     function mostrarMiniaturas() {
       const container = document.getElementById('todosSlides');
       container.innerHTML = '';
+
       slides.forEach((slide, index) => {
+        const linhas = slide.split('\n');
+        const titulo = linhas[0] || `Slide ${index + 1}`;
+        const corpo = linhas.slice(1).join(' ').slice(0, 80) + '...';
+
         const miniatura = document.createElement('div');
         miniatura.className = 'miniatura';
-        const titulo = slide.split('\n')[0] || `Slide ${index + 1}`;
-        const preview = slide.length > 100 ? slide.slice(0, 100) + '...' : slide;
-        miniatura.innerHTML = `<h4>${titulo}</h4><p>${preview}</p>`;
+        miniatura.innerHTML = `<h4>${titulo}</h4><p>${corpo}</p>`;
         miniatura.onclick = () => {
           slideIndex = index;
           atualizarTela();
@@ -255,10 +258,4 @@
 
     window.addEventListener('message', function(event) {
       if (event.data && typeof event.data.slideIndex === 'number') {
-        slideIndex = event.data.slideIndex;
-        atualizarTela();
-      }
-    });
-  </script>
-</body>
-</html>
+        slideIndex =
