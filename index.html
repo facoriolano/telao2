@@ -109,12 +109,23 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: #121212;
-      color: #f0f0f0;
-      font-size: 40px;
+      background: #0a1a2f;
+      color: #ffffff;
+      font-family: Arial, sans-serif;
       padding: 60px;
       box-sizing: border-box;
       z-index: 9999;
+    }
+
+    #slideTela h1 {
+      color: #fdd835;
+      font-size: 48px;
+      margin-bottom: 40px;
+    }
+
+    #slideTela p {
+      font-size: 28px;
+      line-height: 1.6;
     }
 
     #apresentacao button {
@@ -220,7 +231,10 @@
 
     function abrirTelaCheia(index) {
       slideIndex = index;
-      document.getElementById('slideTela').innerHTML = slides[slideIndex].replace(/\n/g, '<br>');
+      const texto = slides[slideIndex].replace(/\n/g, '<br>');
+      const titulo = texto.split('<br>')[0];
+      const corpo = texto.split('<br>').slice(1).join('<br>');
+      document.getElementById('slideTela').innerHTML = `<h1>${titulo}</h1><p>${corpo}</p>`;
       document.getElementById('apresentacao').style.display = 'block';
     }
 
@@ -233,10 +247,10 @@
       if (tela.style.display === 'block') {
         if (e.key === 'ArrowRight' && slideIndex < slides.length - 1) {
           slideIndex++;
-          document.getElementById('slideTela').innerHTML = slides[slideIndex].replace(/\n/g, '<br>');
+          abrirTelaCheia(slideIndex);
         } else if (e.key === 'ArrowLeft' && slideIndex > 0) {
           slideIndex--;
-          document.getElementById('slideTela').innerHTML = slides[slideIndex].replace(/\n/g, '<br>');
+          abrirTelaCheia(slideIndex);
         }
       } else {
         if (e.key === 'ArrowRight' && slideIndex < slides.length - 1) {
