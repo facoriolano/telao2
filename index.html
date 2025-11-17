@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Removido o título estático para a tela do apresentador não ter texto desnecessário no browser tab -->
     <title>Modo Apresentador | Sincronização por Voz</title> 
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -85,22 +84,22 @@
             box-sizing: border-box;
         }
         
-        /* Removido o #slide-container e seus estilos de borda/sombra para tela cheia */
-
+        /* O estilo da fonte será ajustado via JavaScript, removendo os valores fixos do CSS */
         #slide-title {
             color: var(--color-primary); /* Título na cor de destaque */
-            font-size: 5vw; /* Título responsivo */
             font-weight: 800;
             margin-bottom: 5vh;
             text-align: center;
             max-width: 100%;
+            line-height: 1.1;
+            transition: font-size 0.3s; /* Transição suave para o ajuste de fonte */
         }
         #presenter-content {
             color: #E0E0E0; /* Texto em cinza claro */
             text-align: center;
-            font-size: 2.5vw; /* Conteúdo responsivo */
             max-width: 100%;
             line-height: 1.4;
+            transition: font-size 0.3s; /* Transição suave para o ajuste de fonte */
         }
 
         /* O indicador de slide foi removido da tela do apresentador */
@@ -325,9 +324,11 @@
     <div id="presenter-interface" class="hidden">
         <div id="presenter-screen" class="p-10 text-white">
             <!-- Título do Slide (Sem prefixos como 'Slide X:') -->
-            <h1 id="slide-title" class="text-7xl font-extrabold text-center transition-opacity duration-300">Carregando Apresentação...</h1>
+            <!-- O estilo 'font-size' é removido daqui e será ajustado pelo JS -->
+            <h1 id="slide-title" class="font-extrabold text-center transition-opacity duration-300">Carregando Apresentação...</h1>
             <!-- Conteúdo do Slide -->
-            <div id="presenter-content" class="text-gray-200 text-center text-2xl transition-opacity duration-300">
+            <!-- O estilo 'font-size' é removido daqui e será ajustado pelo JS -->
+            <div id="presenter-content" class="text-gray-200 text-center transition-opacity duration-300">
                 Aguardando sincronização do Diretor.
             </div>
             <!-- O elemento slide-index-display está totalmente oculto -->
@@ -353,12 +354,11 @@
 
         // Dados de slides Padrão
         const DEFAULT_SLIDES = [
-            // Corrigido para remover 'Slide X:' do título, mantendo apenas o conteúdo
             { title: "Início: Introdução à Apresentação", content: "Olá a todos! Hoje vamos usar a voz para interagir com o software. Este é um modo diretor/apresentador. Vamos aprender como funciona.", trigger: "como funciona." },
             { title: "O Desafio da Transição", content: "A transição manual de slides exige um operador. Queremos que o foco seja 100% no conteúdo, na mensagem, e no palestrante. A tecnologia está aqui para ajudar.", trigger: "aqui para ajudar." },
             { title: "Tecnologia de Reconhecimento", content: "Usamos a API de Fala (Web Speech API) para escutar. O reconhecimento é contínuo e busca uma frase de gatilho, as últimas 4 palavras. A precisão é fundamental.", trigger: "é fundamental." },
             { title: "A Chave para a Automação", content: "Ao detectar a frase de gatilho, o sistema atualiza o índice do slide via Firestore. O Apresentador vê a mudança em tempo real. Uma sincronização perfeita. Próximo slide em 3, 2, 1.", trigger: "slide em 3, 2, 1." },
-            { title: "Obrigado!", content: "Esperamos que este protótipo demonstre o poder da automação por voz em apresentações. Obrigado a todos pela atenção!", trigger: "" } // Último slide não tem gatilho
+            { title: "Obrigado! Fim da Apresentação", content: "Esperamos que este protótipo demonstre o poder da automação por voz em apresentações. Obrigado a todos pela atenção, e encerramos agora.", trigger: "" } // Último slide não tem gatilho
         ];
 
         // Estado Global
@@ -368,14 +368,72 @@
         let slidesData = DEFAULT_SLIDES;
         let currentSlideIndex = 0;
         let recognition = null; // Instância do Speech Recognition
+        let presenterWindow = null; // Referência à janela do apresentador
 
         // Referência do documento no Firestore (PÚBLICA para sincronizar entre janelas)
         const getPresentationDocRef = () => {
             return doc(db, 'artifacts', appId, 'public', 'data', 'presentation_state', 'current_slide');
         };
 
+        // --- FUNÇÃO DE AJUSTE AUTOMÁTICO DE FONTE (CRUCIAL) ---
+
+        /**
+         * Ajusta o tamanho da fonte do título e do conteúdo para preencher o slide de forma ideal.
+         * Esta função é chamada apenas no MODO APRESENTADOR.
+         */
+        function adjustFontSize(slide) {
+            const titleEl = document.getElementById('slide-title');
+            const contentEl = document.getElementById('presenter-content');
+            const screen = document.getElementById('presenter-screen');
+
+            if (!titleEl || !contentEl || !screen) return;
+
+            // 1. Coleta métricas da tela e do texto
+            const screenHeight = screen.clientHeight;
+            const screenWidth = screen.clientWidth;
+            const titleLength = slide.title.length;
+            const contentLength = slide.content.length;
+            const totalLength = titleLength + contentLength;
+
+            // Fatores de Ponderação (ajustáveis para equilibrar título vs corpo)
+            const titleWeight = 0.6; // Título deve ser significativamente maior
+            const contentWeight = 0.4; 
+
+            // Fator de densidade para garantir que o texto não fique 'grudado' ou muito pequeno
+            // Valores entre 100 e 200 tendem a funcionar bem.
+            const densityFactor = 150; 
+            
+            // Heurística de Tamanho Base (usando a raiz quadrada do total de caracteres para suavizar o ajuste)
+            // O fator 80000 é um valor que tenta escalar a fonte para um tamanho base razoável na tela.
+            let baseFontSize = Math.min(screenWidth / (totalLength / 25), screenHeight / 10);
+            baseFontSize = Math.max(20, baseFontSize); // Mínimo de 20px para legibilidade
+
+            // 2. Cálculo dos Tamanhos Finais
+            
+            // Ajuste do Título: Inversamente proporcional ao tamanho do texto
+            // Títulos curtos ficam maiores (até 15vw), títulos longos ficam menores
+            let titleSize = screenWidth / (titleLength * titleWeight);
+            titleSize = Math.min(titleSize, screenWidth * 0.08); // Limite máximo para o título (8vw)
+            titleSize = Math.max(titleSize, 40); // Limite mínimo
+
+            // Ajuste do Conteúdo: Inversamente proporcional ao tamanho do texto
+            let contentSize = screenWidth / (contentLength * contentWeight);
+            contentSize = Math.min(contentSize, screenWidth * 0.035); // Limite máximo para o corpo (3.5vw)
+            contentSize = Math.max(contentSize, 18); // Limite mínimo
+
+            // 3. Aplicação dos Estilos
+            titleEl.style.fontSize = `${titleSize}px`;
+            contentEl.style.fontSize = `${contentSize}px`;
+
+            console.log(`[Ajuste Fonte] Título: ${titleSize.toFixed(1)}px, Conteúdo: ${contentSize.toFixed(1)}px`);
+        }
+
+
         // --- FUNÇÕES DE UTILTÁRIO E ATUALIZAÇÃO DA UI ---
 
+        /**
+         * Atualiza o conteúdo e ajusta o tamanho da fonte (se for a tela do apresentador).
+         */
         function updateUI(slideIndex) {
             
             // Garante que o slideData mais recente seja usado
@@ -441,12 +499,11 @@
                 
                 setTimeout(() => {
                     // Atualiza o conteúdo após o fade-out
-                    // CORRIGIDO: O título agora vem limpo, sem o prefixo de slide.
                     titleEl.textContent = currentSlide.title; 
                     contentEl.textContent = currentSlide.content;
                     
-                    // O elemento slide-index-display continua oculto
-                    document.getElementById('slide-index-display').textContent = `Slide ${safeIndex + 1} de ${slidesData.length}`; 
+                    // CHAMA O AJUSTE AUTOMÁTICO DE FONTE
+                    adjustFontSize(currentSlide);
 
                     // Aplica a transição de fade-in
                     titleEl.style.opacity = '1';
@@ -470,7 +527,7 @@
                 try {
                     // Armazena no Firestore
                     await setDoc(docRef, { index: index, updated: new Date().toISOString() }, { merge: true });
-                    console.log("Índice do slide atualizado (FIREBASE) para:", index);
+                    // console.log("Índice do slide atualizado (FIREBASE) para:", index);
                 } catch (error) {
                     // Se a escrita no Firestore falhar, cai para o LocalStorage
                     console.error("Erro ao atualizar o índice do slide no Firestore. Usando LocalStorage:", error);
@@ -483,7 +540,7 @@
                 localStorage.setItem(LOCAL_STORAGE_INDEX_KEY, index);
                 // O Storage Event Listener (se configurado) fará o updateUI
                 updateUI(index); 
-                console.log("Índice do slide atualizado (LOCAL) para:", index);
+                // console.log("Índice do slide atualizado (LOCAL) para:", index);
             }
         }
 
@@ -692,8 +749,8 @@
             document.getElementById('open-presenter-btn').addEventListener('click', () => {
                 // Remove quaisquer parâmetros de modo para garantir que o novo modo seja aplicado
                 const presenterUrl = window.location.href.split('?')[0] + '?mode=presenter';
-                // Abre em uma nova janela de 1280x720 (melhor para tela cheia)
-                window.open(presenterUrl, 'PresenterScreen', 'width=1280,height=720,resizable=yes');
+                // Armazena a referência da janela
+                presenterWindow = window.open(presenterUrl, 'PresenterScreen', 'width=1280,height=720,resizable=yes');
                 
                 // Mude o título do documento pai (Diretor) para refletir o modo
                 document.title = "Modo Diretor | Sincronização por Voz";
@@ -733,6 +790,14 @@
                     moveSlideTo(currentSlideIndex - 1);
                 }
             });
+
+            // CORRIGIDO: Listener para o evento de resize da janela no MODO APRESENTADOR
+            if (window.location.search.includes('mode=presenter')) {
+                window.addEventListener('resize', () => {
+                    // Reajusta a fonte quando a janela é redimensionada (ex: entra em Full Screen)
+                    updateUI(currentSlideIndex);
+                });
+            }
 
             // --- Listener de Sincronização Local (Fallback) ---
             window.addEventListener('storage', (event) => {
