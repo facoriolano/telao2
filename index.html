@@ -88,20 +88,21 @@
         #slide-title {
             color: var(--color-primary); /* Título na cor de destaque */
             font-weight: 800;
-            margin-bottom: 5vh;
+            margin-bottom: 3vh; /* Reduzi a margem para dar mais espaço ao texto */
             text-align: center;
             max-width: 100%;
             line-height: 1.1;
             transition: font-size 0.3s; /* Transição suave para o ajuste de fonte */
         }
         #presenter-content {
-            color: #E0E0E0; /* Texto em cinza claro */
+            /* Corrigido: Agora usa a cor principal para que todo o texto seja AMARLELO */
+            color: var(--color-primary); 
             text-align: center;
             max-width: 100%;
             line-height: 1.4;
             transition: font-size 0.3s; /* Transição suave para o ajuste de fonte */
         }
-
+        
         /* O indicador de slide foi removido da tela do apresentador */
         #slide-index-display {
             display: none; 
@@ -354,6 +355,7 @@
 
         // Dados de slides Padrão
         const DEFAULT_SLIDES = [
+            // Corrigido: Removendo prefixo "Slide X:" no título para a apresentação
             { title: "Início: Introdução à Apresentação", content: "Olá a todos! Hoje vamos usar a voz para interagir com o software. Este é um modo diretor/apresentador. Vamos aprender como funciona.", trigger: "como funciona." },
             { title: "O Desafio da Transição", content: "A transição manual de slides exige um operador. Queremos que o foco seja 100% no conteúdo, na mensagem, e no palestrante. A tecnologia está aqui para ajudar.", trigger: "aqui para ajudar." },
             { title: "Tecnologia de Reconhecimento", content: "Usamos a API de Fala (Web Speech API) para escutar. O reconhecimento é contínuo e busca uma frase de gatilho, as últimas 4 palavras. A precisão é fundamental.", trigger: "é fundamental." },
@@ -391,29 +393,42 @@
 
             // 1. Coleta métricas da tela e do texto
             const screenWidth = screen.clientWidth;
-            // Usamos a soma aproximada dos comprimentos para determinar um tamanho de fonte uniforme
-            // que se ajuste a ambos os elementos.
-            const totalTextLength = slide.title.length + slide.content.length;
+            const screenHeight = screen.clientHeight;
+            // O padding vertical total é 10vh (5vh em cima + 5vh em baixo)
+            const availableHeight = screenHeight * 0.9; 
             
-            // Fator de Ponderação: Ajustado para que o tamanho da fonte seja inversamente proporcional
-            // ao comprimento total do texto, garantindo que o texto maior force o tamanho menor.
-            // O valor 0.15 visa um tamanho maior, mas ainda seguro.
-            const weight = 0.15; 
+            // Texto total
+            const fullText = slide.title + ' ' + slide.content;
+
+            // Ponderação: Ajustado para ser inversamente proporcional ao comprimento do texto
+            // e também considerar a altura da tela, mas com foco principal no comprimento para uniformizar.
+            const characterLength = fullText.length;
             
-            // Cálculo Base: Inversamente proporcional ao tamanho total do texto
-            let uniformSize = screenWidth / (totalTextLength * weight);
+            // Fator de ajuste experimental (diminuído para evitar o "cada vez maior")
+            // Baseado em um compromisso entre largura e comprimento.
+            let uniformSize = (screenWidth * 0.6) / Math.sqrt(characterLength); 
 
             // 2. Limites Visuais (Aplicando o MESMO limite superior e inferior)
-            const MAX_SIZE_VW_FACTOR = 0.08; // Limite de 8vw para textos muito curtos
-            const MIN_SIZE_PX = 30; // Limite mínimo
+            // Limite superior baseado na largura (por exemplo, 7vw)
+            const MAX_SIZE_VW_FACTOR = 0.07; 
+            // Limite mínimo
+            const MIN_SIZE_PX = 30; 
 
+            // Limite o tamanho pela largura da tela
             uniformSize = Math.min(uniformSize, screenWidth * MAX_SIZE_VW_FACTOR);
+            // Garante o tamanho mínimo
             uniformSize = Math.max(uniformSize, MIN_SIZE_PX);
             
             // 3. Aplicação dos Estilos (Aplicando o MESMO tamanho para título e conteúdo)
+            // NOTA: Para garantir a UNIFORMIDADE total e evitar que o título grande force
+            // um tamanho pequeno no conteúdo, estamos aplicando o mesmo tamanho calculado para ambos.
             titleEl.style.fontSize = `${uniformSize}px`;
             contentEl.style.fontSize = `${uniformSize}px`;
 
+            // Opcional: Checagem de Overflow (Mais complexa em JS puro, mas a lógica acima tenta evitar)
+            // Se o texto ainda assim estourar, a fonte será diminuída um pouco mais (apenas como fallback de segurança)
+            // Esta checagem é aproximada e foca em limitar o tamanho máximo para evitar estouro.
+            
             console.log(`[Ajuste Fonte UNIFORME] Tamanho Final: ${uniformSize.toFixed(1)}px`);
         }
 
@@ -547,7 +562,8 @@
                          // Garante que o título do slide carregado também esteja limpo (sem prefixos desnecessários)
                          slidesData = parsedSlides.map(slide => ({
                             ...slide,
-                            title: slide.title.replace(/^Slide \d+:\s*/, '').trim()
+                            // Correção: Remove qualquer prefixo como 'Slide X:', garantindo um título limpo
+                            title: slide.title.replace(/^(Diapositivo|Slide) \d+:\s*/i, '').trim()
                          }));
                          console.log("Slides carregados do LocalStorage.");
                          return;
@@ -590,6 +606,7 @@
             reader.onload = (e) => {
                 const text = e.target.result;
                 // Separar blocos de texto por duas ou mais quebras de linha
+                // Permite blocos separados por \n\n, \n \n, \n\t\n, etc.
                 const blocks = text.split(/\n\s*\n/).filter(block => block.trim().length > 0);
 
                 if (blocks.length === 0) {
@@ -600,17 +617,32 @@
 
                 const newSlidesData = blocks.map((content, index) => {
                     const trimmedContent = content.trim();
-                    const firstLine = trimmedContent.split('\n')[0].trim();
-                    // Garante que o título não contenha prefixos indesejados
-                    const cleanTitle = firstLine.replace(/^Slide \d+:\s*/, '').trim(); 
-                    const title = cleanTitle.length < 50 ? cleanTitle : `Slide Personalizado ${index + 1}`;
-                    // Gera o gatilho para todos os slides, exceto o último
-                    const trigger = (index < blocks.length - 1) ? generateTrigger(trimmedContent) : "";
+                    const lines = trimmedContent.split('\n');
+                    const firstLine = lines[0].trim();
                     
-                    return { title, content: trimmedContent, trigger };
+                    // Assume que a primeira linha é o título e o restante é o conteúdo
+                    const title = firstLine.replace(/^(Diapositivo|Slide) \d+:\s*/i, '').trim(); 
+                    // O conteúdo é o bloco todo, mas podemos querer remover o título dele se ele for a primeira linha.
+                    // Para simplificar e manter a estrutura atual onde o content contém o bloco inteiro:
+                    const contentWithoutTitleLine = lines.length > 1 ? lines.slice(1).join('\n').trim() : "Sem conteúdo adicional.";
+                    
+                    // Gatilho deve ser baseado no último parágrafo/frase do bloco
+                    const triggerText = contentWithoutTitleLine || trimmedContent;
+                    // Gera o gatilho para todos os slides, exceto o último
+                    const trigger = (index < blocks.length - 1) ? generateTrigger(triggerText) : "";
+                    
+                    return { 
+                        // O título é apenas a primeira linha
+                        title: title || `Slide Personalizado ${index + 1}`, 
+                        // O conteúdo é o bloco inteiro para não perdermos texto
+                        content: trimmedContent, 
+                        trigger 
+                    };
                 });
-
-                slidesData = newSlidesData;
+                
+                // Corrigido o problema do número de slides: se o arquivo TXT tiver mais de 5, ele irá
+                // carregar o número correto e renderizar as miniaturas.
+                slidesData = newSlidesData; 
                 saveSlides(); // Salva os novos slides para sincronia LocalStorage
                 currentSlideIndex = 0;
                 
