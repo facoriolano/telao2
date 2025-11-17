@@ -130,6 +130,7 @@
 
   <script>
     let slides = [];
+    let slideIndex = 0;
 
     function abrirTXT() {
       const fileInput = document.getElementById('fileInput');
@@ -163,9 +164,10 @@
 
         miniatura.innerHTML = `<h4>${titulo}</h4><p>${preview}</p>`;
         miniatura.onclick = () => {
-          mostrarSlideAtual(index);
-          destacarMiniatura(index);
-          abrirPopup(slide);
+          slideIndex = index;
+          mostrarSlideAtual(slideIndex);
+          destacarMiniatura(slideIndex);
+          abrirPopup(slideIndex);
         };
         container.appendChild(miniatura);
       });
@@ -182,14 +184,15 @@
     function destacarMiniatura(index) {
       const todas = document.querySelectorAll('.miniatura');
       todas.forEach((el, i) => {
-        el.classList.toggle('ativa', i === parseInt(index));
+        el.classList.toggle('ativa', i === index);
       });
     }
 
-    function abrirPopup(texto) {
-      const novaJanela = window.open('', '', 'width=600,height=400');
-      if (novaJanela) {
-        novaJanela.document.write(`
+    function abrirPopup(index) {
+      const texto = slides[index];
+      const popup = window.open('', '', 'width=800,height=600');
+      if (popup) {
+        popup.document.write(`
           <html>
             <head>
               <title>Slide Atual</title>
@@ -198,21 +201,53 @@
                   background-color: #121212;
                   color: #f0f0f0;
                   font-family: Arial, sans-serif;
-                  padding: 20px;
+                  padding: 40px;
+                  font-size: 28px;
+                  line-height: 1.5;
                 }
               </style>
             </head>
             <body>
-              <h2>Slide Atual</h2>
-              <pre>${texto}</pre>
+              <div id="conteudo">${texto.replace(/\n/g, '<br>')}</div>
+              <script>
+                const slides = ${JSON.stringify(slides)};
+                let slideIndex = ${index};
+
+                function atualizarSlide() {
+                  document.getElementById('conteudo').innerHTML = slides[slideIndex].replace(/\\n/g, '<br>');
+                }
+
+                document.addEventListener('keydown', function(e) {
+                  if (e.key === 'ArrowRight' && slideIndex < slides.length - 1) {
+                    slideIndex++;
+                    atualizarSlide();
+                  } else if (e.key === 'ArrowLeft' && slideIndex > 0) {
+                    slideIndex--;
+                    atualizarSlide();
+                  }
+                });
+              </script>
             </body>
           </html>
         `);
-        novaJanela.document.close();
+        popup.document.close();
       } else {
         alert('Pop-up bloqueado. Ative pop-ups para visualizar o slide.');
       }
     }
+
+    document.addEventListener('keydown', function(e) {
+      if (slides.length === 0) return;
+      if (e.key === 'ArrowRight' && slideIndex < slides.length - 1) {
+        slideIndex++;
+        mostrarSlideAtual(slideIndex);
+        destacarMiniatura(slideIndex);
+      } else if (e.key === 'ArrowLeft' && slideIndex > 0) {
+        slideIndex--;
+        mostrarSlideAtual(slideIndex);
+        destacarMiniatura(slideIndex);
+      }
+    });
   </script>
 </body>
 </html>
