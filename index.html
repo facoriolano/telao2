@@ -11,6 +11,14 @@
   <h1>Apresentador Automático</h1>
   <input type="file" id="fileInput" accept=".txt" />
   <button onclick="startPresentation()">Iniciar Apresentação</button>
+
+  <div id="controls">
+    <button onclick="prevSlide()">⬅️</button>
+    <span id="slideIndicator">Slide 1</span>
+    <button onclick="nextSlide()">➡️</button>
+  </div>
+
+  <div id="thumbnails"></div>
   <div id="slidePreview"></div>
 </body>
 </html>
