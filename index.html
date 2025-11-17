@@ -84,25 +84,54 @@
             box-sizing: border-box;
         }
         
-        /* O estilo da fonte será ajustado via JavaScript, removendo os valores fixos do CSS */
+        /* O estilo da fonte será ajustado via JavaScript */
         #slide-title {
             color: var(--color-primary); /* Título na cor de destaque */
             font-weight: 800;
-            margin-bottom: 3vh; /* Reduzi a margem para dar mais espaço ao texto */
+            margin-bottom: 3vh; 
             text-align: center;
             max-width: 100%;
             line-height: 1.1;
-            transition: font-size 0.3s; /* Transição suave para o ajuste de fonte */
+            transition: font-size 0.3s; 
         }
+
+        /* NOVO: Estilo para o contêiner do conteúdo (que agora é uma lista ou parágrafo) */
         #presenter-content {
-            /* Corrigido: Agora usa a cor principal para que todo o texto seja AMARLELO */
             color: var(--color-primary); 
-            text-align: center;
+            text-align: left; /* Alinhamento à esquerda para a lista */
             max-width: 100%;
             line-height: 1.4;
-            transition: font-size 0.3s; /* Transição suave para o ajuste de fonte */
+            transition: font-size 0.3s;
+            overflow-y: auto; /* Adiciona scroll se o texto for muito longo */
         }
-        
+
+        /* NOVO: Estilo para a Lista de Marcadores */
+        #presenter-content ul {
+            list-style-type: none; /* Remove o marcador padrão do UL */
+            padding-left: 0; /* Remove o padding padrão do UL */
+            margin: 0;
+            width: 100%; /* Garante que a lista use toda a largura disponível */
+        }
+
+        /* NOVO: Estilo para os Itens da Lista (Li) */
+        #presenter-content li {
+            position: relative;
+            margin-bottom: 0.5em; /* Espaçamento entre os itens */
+            padding-left: 1.5em; /* Espaço para o marcador customizado */
+            text-align: left; /* Garante que o texto do item esteja à esquerda */
+        }
+
+        /* NOVO: Estilo para o Marcador Customizado (usando ::before) */
+        #presenter-content li::before {
+            content: "•"; /* Marcador circular */
+            position: absolute;
+            left: 0;
+            top: 0;
+            /* O tamanho do marcador será herdado do font-size ajustado pelo JS */
+            color: var(--color-primary); /* Cor do marcador */
+            font-weight: 900;
+        }
+
         /* O indicador de slide foi removido da tela do apresentador */
         #slide-index-display {
             display: none; 
@@ -324,12 +353,9 @@
     <!-- Interface do Apresentador (Corrigida e Limpa) -->
     <div id="presenter-interface" class="hidden">
         <div id="presenter-screen" class="p-10 text-white">
-            <!-- Título do Slide (Sem prefixos como 'Slide X:') -->
-            <!-- O estilo 'font-size' é removido daqui e será ajustado pelo JS -->
             <h1 id="slide-title" class="font-extrabold text-center transition-opacity duration-300">Carregando Apresentação...</h1>
-            <!-- Conteúdo do Slide -->
-            <!-- O estilo 'font-size' é removido daqui e será ajustado pelo JS -->
-            <div id="presenter-content" class="text-gray-200 text-center transition-opacity duration-300">
+            <!-- Conteúdo do Slide: O JS injetará uma lista UL/LI aqui -->
+            <div id="presenter-content" class="text-gray-200 transition-opacity duration-300">
                 Aguardando sincronização do Diretor.
             </div>
             <!-- O elemento slide-index-display está totalmente oculto -->
@@ -354,13 +380,13 @@
         const LOCAL_STORAGE_SLIDES_KEY = `slides_data_${appId}`;
 
         // Dados de slides Padrão
+        // Ajustado para simular o formato de lista (quebra de linha entre os itens)
         const DEFAULT_SLIDES = [
-            // Corrigido: Removendo prefixo "Slide X:" no título para a apresentação
-            { title: "Início: Introdução à Apresentação", content: "Olá a todos! Hoje vamos usar a voz para interagir com o software. Este é um modo diretor/apresentador. Vamos aprender como funciona.", trigger: "como funciona." },
-            { title: "O Desafio da Transição", content: "A transição manual de slides exige um operador. Queremos que o foco seja 100% no conteúdo, na mensagem, e no palestrante. A tecnologia está aqui para ajudar.", trigger: "aqui para ajudar." },
-            { title: "Tecnologia de Reconhecimento", content: "Usamos a API de Fala (Web Speech API) para escutar. O reconhecimento é contínuo e busca uma frase de gatilho, as últimas 4 palavras. A precisão é fundamental.", trigger: "é fundamental." },
-            { title: "A Chave para a Automação", content: "Ao detectar a frase de gatilho, o sistema atualiza o índice do slide via Firestore. O Apresentador vê a mudança em tempo real. Uma sincronização perfeita. Próximo slide em 3, 2, 1.", trigger: "slide em 3, 2, 1." },
-            { title: "Obrigado! Fim da Apresentação", content: "Esperamos que este protótipo demonstre o poder da automação por voz em apresentações. Obrigado a todos pela atenção, e encerramos agora.", trigger: "" } // Último slide não tem gatilho
+            { title: "Início: Introdução à Apresentação", content: "Olá a todos! Hoje vamos usar a voz para interagir com o software.\nEste é um modo diretor/apresentador.\nVamos aprender como funciona.", trigger: "como funciona." },
+            { title: "O Desafio da Transição", content: "A transição manual de slides exige um operador.\nQueremos que o foco seja 100% no conteúdo, na mensagem, e no palestrante.\nA tecnologia está aqui para ajudar.", trigger: "aqui para ajudar." },
+            { title: "Tecnologia de Reconhecimento", content: "Usamos a API de Fala (Web Speech API) para escutar.\nO reconhecimento é contínuo e busca uma frase de gatilho, as últimas 4 palavras.\nA precisão é fundamental.", trigger: "é fundamental." },
+            { title: "A Chave para a Automação", content: "Ao detectar a frase de gatilho, o sistema atualiza o índice do slide via Firestore.\nO Apresentador vê a mudança em tempo real.\nUma sincronização perfeita. Próximo slide em 3, 2, 1.", trigger: "slide em 3, 2, 1." },
+            { title: "Obrigado! Fim da Apresentação", content: "Esperamos que este protótipo demonstre o poder da automação por voz em apresentações.\nObrigado a todos pela atenção, e encerramos agora.", trigger: "" } // Último slide não tem gatilho
         ];
 
         // Estado Global
@@ -376,6 +402,28 @@
         const getPresentationDocRef = () => {
             return doc(db, 'artifacts', appId, 'public', 'data', 'presentation_state', 'current_slide');
         };
+
+        // --- FUNÇÕES DE PROCESSAMENTO DE CONTEÚDO ---
+
+        /**
+         * Converte o texto do slide em HTML, tratando cada linha como um item de lista.
+         * Se houver apenas uma linha, retorna como um parágrafo.
+         */
+        function contentToHtml(content) {
+            if (!content) return "";
+            
+            // Separa o texto por quebras de linha e filtra linhas vazias
+            const lines = content.trim().split('\n').map(line => line.trim()).filter(line => line.length > 0);
+
+            if (lines.length > 1) {
+                // Se houver mais de uma linha, cria uma lista não ordenada (<ul>)
+                const listItems = lines.map(line => `<li>${line}</li>`).join('');
+                return `<ul>${listItems}</ul>`;
+            } else {
+                // Se for uma única linha, ou bloco de texto, retorna como parágrafo
+                return `<p>${content.trim()}</p>`;
+            }
+        }
 
         // --- FUNÇÃO DE AJUSTE AUTOMÁTICO DE FONTE (COM MÍNIMO DE 60PX) ---
 
@@ -393,8 +441,6 @@
 
             // 1. Coleta métricas da tela e do texto
             const screenWidth = screen.clientWidth;
-            // O padding vertical total é 10vh (5vh em cima + 5vh em baixo)
-            // const availableHeight = screenHeight * 0.9; // Removido, foco no tamanho da fonte uniforme pelo comprimento
             
             // Texto total
             const fullText = slide.title + ' ' + slide.content;
@@ -403,28 +449,24 @@
             const characterLength = fullText.length;
             
             // Fator de ajuste experimental
-            // A largura do texto é estimada por: (caracteres * tamanho da fonte)
-            // Para caber na largura, o tamanho deve ser inversamente proporcional à raiz quadrada do comprimento do texto.
             let uniformSize = (screenWidth * 0.6) / Math.sqrt(characterLength); 
 
             // 2. Limites Visuais
             const MAX_SIZE_VW_FACTOR = 0.07; // Limite superior
             
-            // NOVO: Tamanho mínimo forçado em pixels (para atender o pedido de 'fonte 60')
+            // Tamanho mínimo forçado em pixels
             const MIN_SIZE_PX = 60; 
 
             // Limite o tamanho pela largura da tela
             uniformSize = Math.min(uniformSize, screenWidth * MAX_SIZE_VW_FACTOR);
             
             // Garante o tamanho MÍNIMO de 60px
-            // Se o texto for muito curto, ele será grande (até o máximo). 
-            // Se o texto for muito longo, ele será pequeno (mas nunca menos que 60px, a menos que estoure).
-            // NOTA: Se o texto for muito longo e forçar um tamanho menor que 60px para caber,
-            // o 60px será o novo limite, e o texto pode estourar (que é o comportamento esperado se a fonte for "fixa").
             uniformSize = Math.max(uniformSize, MIN_SIZE_PX); 
             
             // 3. Aplicação dos Estilos (Aplicando o MESMO tamanho para título e conteúdo)
             titleEl.style.fontSize = `${uniformSize}px`;
+            
+            // Aplica o tamanho da fonte ao contêiner de conteúdo (UL ou P)
             contentEl.style.fontSize = `${uniformSize}px`;
 
             console.log(`[Ajuste Fonte UNIFORME] Tamanho Final: ${uniformSize.toFixed(1)}px (Mínimo 60px)`);
@@ -462,7 +504,7 @@
                 if (nextSlide) {
                     document.getElementById('next-preview-title').textContent = nextSlide.title;
                     // Limita o conteúdo do próximo slide para o preview
-                    document.getElementById('next-preview-content').textContent = nextSlide.content.substring(0, 150) + (nextSlide.content.length > 150 ? '...' : '');
+                    document.getElementById('next-preview-content').textContent = nextSlide.content.substring(0, 150).replace(/\n/g, ' ') + (nextSlide.content.length > 150 ? '...' : '');
                     document.getElementById('expected-trigger').textContent = `Gatilho p/ Próximo: "${nextSlide.trigger}"`;
                     document.getElementById('next-slide-content-container').classList.remove('justify-center');
                     document.getElementById('next-slide-content-container').classList.add('justify-start');
@@ -502,7 +544,8 @@
                 setTimeout(() => {
                     // Atualiza o conteúdo após o fade-out
                     titleEl.textContent = currentSlide.title; 
-                    contentEl.textContent = currentSlide.content;
+                    // NOVO: Converte o conteúdo do texto para HTML (lista)
+                    contentEl.innerHTML = contentToHtml(currentSlide.content);
                     
                     // CHAMA O AJUSTE AUTOMÁTICO DE FONTE UNIFORME
                     adjustFontSize(currentSlide);
@@ -588,6 +631,7 @@
 
         function generateTrigger(text) {
             if (!text) return "";
+            // Remove quebras de linha e trata como um bloco
             const cleanedText = text.replace(/[^a-záéíóúãõçàèìòùâêîôû\s]/gi, '').toLowerCase();
             const words = cleanedText.split(/\s+/).filter(word => word.length > 0);
             if (words.length === 0) return "";
@@ -620,26 +664,24 @@
                     
                     // Assume que a primeira linha é o título e o restante é o conteúdo
                     const title = firstLine.replace(/^(Diapositivo|Slide) \d+:\s*/i, '').trim(); 
-                    // O conteúdo é o bloco todo, mas podemos querer remover o título dele se ele for a primeira linha.
-                    // Para simplificar e manter a estrutura atual onde o content contém o bloco inteiro:
-                    const contentWithoutTitleLine = lines.length > 1 ? lines.slice(1).join('\n').trim() : "Sem conteúdo adicional.";
+                    // O conteúdo é o bloco todo para manter as quebras de linha
+                    const contentForSlide = trimmedContent; 
                     
-                    // Gatilho deve ser baseado no último parágrafo/frase do bloco
-                    const triggerText = contentWithoutTitleLine || trimmedContent;
+                    // O gatilho é baseado no bloco inteiro
+                    const triggerText = contentForSlide;
                     // Gera o gatilho para todos os slides, exceto o último
                     const trigger = (index < blocks.length - 1) ? generateTrigger(triggerText) : "";
                     
                     return { 
                         // O título é apenas a primeira linha
                         title: title || `Slide Personalizado ${index + 1}`, 
-                        // O conteúdo é o bloco inteiro para não perdermos texto
-                        content: trimmedContent, 
+                        // O conteúdo é o bloco inteiro para as quebras de linha definirem os marcadores
+                        content: contentForSlide, 
                         trigger 
                     };
                 });
                 
-                // Corrigido o problema do número de slides: se o arquivo TXT tiver mais de 5, ele irá
-                // carregar o número correto e renderizar as miniaturas.
+                // Corrigido o problema do número de slides
                 slidesData = newSlidesData; 
                 saveSlides(); // Salva os novos slides para sincronia LocalStorage
                 currentSlideIndex = 0;
@@ -668,8 +710,8 @@
                 
                 // Limita o título e o snippet para caberem bem
                 const title = slide.title.substring(0, 40) + (slide.title.length > 40 ? '...' : '');
-                // Pega apenas os primeiros 100 caracteres para o snippet
-                const contentSnippet = slide.content.substring(0, 100) + (slide.content.length > 100 ? '...' : '');
+                // Pega apenas os primeiros 100 caracteres para o snippet e remove quebras de linha para visualização
+                const contentSnippet = slide.content.substring(0, 100).replace(/\n/g, ' ') + (slide.content.length > 100 ? '...' : '');
 
                 // Estrutura HTML atualizada para o preview de conteúdo + número de canto
                 thumbnail.innerHTML = `
