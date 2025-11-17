@@ -375,10 +375,11 @@
             return doc(db, 'artifacts', appId, 'public', 'data', 'presentation_state', 'current_slide');
         };
 
-        // --- FUNÇÃO DE AJUSTE AUTOMÁTICO DE FONTE (CRUCIAL) ---
+        // --- FUNÇÃO DE AJUSTE AUTOMÁTICO DE FONTE (CRUCIAL E OTIMIZADA) ---
 
         /**
-         * Ajusta o tamanho da fonte do título e do conteúdo para preencher o slide de forma ideal.
+         * Ajusta o tamanho da fonte do título e do conteúdo para preencher o slide de forma ideal, 
+         * maximizando o uso do espaço como demonstrado no mockup.
          * Esta função é chamada apenas no MODO APRESENTADOR.
          */
         function adjustFontSize(slide) {
@@ -390,43 +391,45 @@
 
             // 1. Coleta métricas da tela e do texto
             const screenWidth = screen.clientWidth;
+            const screenHeight = screen.clientHeight;
             const titleLength = slide.title.length;
             const contentLength = slide.content.length;
-            const totalLength = titleLength + contentLength;
 
-            // Fator de Ponderação ÚNICO (mais baixo, para permitir que as fontes cresçam mais)
-            const uniformWeight = 0.25; // Reduzido de 0.3 para 0.25
+            // Fator de Ponderação Otimizado: 
+            // Usa 0.2 para dar mais espaço para as fontes crescerem.
+            const uniformWeight = 0.2; 
+            
+            // Fatores de Limite Visual (ajustados para serem maiores e preencherem melhor)
+            const MAX_TITLE_VW_FACTOR = 0.1; // 10vw
+            const MAX_CONTENT_VW_FACTOR = 0.08; // 8vw
 
             // 2. Cálculo dos Tamanhos Finais
             
-            // Heurística de Tamanho Base: Usa a largura da tela e o comprimento do texto com o peso uniforme
-            
-            // Ajuste do Título: Inversamente proporcional ao tamanho do texto (mas com limite alto)
-            let titleSize = screenWidth / (titleLength * uniformWeight);
-            // Limite máximo para o título: 8vw
-            titleSize = Math.min(titleSize, screenWidth * 0.08); 
-            // Limite mínimo
-            titleSize = Math.max(titleSize, 40); 
+            // Cálculo Base: Inversamente proporcional ao tamanho do texto (com peso reduzido)
+            let baseTitleSize = screenWidth / (titleLength * uniformWeight);
+            let baseContentSize = screenWidth / (contentLength * uniformWeight);
 
-            // Ajuste do Conteúdo (MODIFICAÇÃO AQUI):
-            // Usa o 'uniformWeight' para manter a proporção mais próxima, e aumenta o limite máximo
-            let contentSize = screenWidth / (contentLength * uniformWeight);
-            // NOVO Limite máximo para o corpo: 7vw (anteriormente 5vw) - para que fique do mesmo tamanho do título
-            contentSize = Math.min(contentSize, screenWidth * 0.07); 
-            // Limite mínimo
-            contentSize = Math.max(contentSize, 30); 
+            // Título: Usa a heurística, mas limita ao fator máximo de largura de tela
+            let titleSize = Math.min(baseTitleSize, screenWidth * MAX_TITLE_VW_FACTOR);
+            titleSize = Math.max(titleSize, 40); // Limite mínimo
+
+            // Conteúdo: Usa a heurística, mas limita ao fator máximo de largura de tela
+            let contentSize = Math.min(baseContentSize, screenWidth * MAX_CONTENT_VW_FACTOR);
+            contentSize = Math.max(contentSize, 30); // Limite mínimo
             
-            // Se o conteúdo for muito curto (ex: 1 linha), forçamos o tamanho do título para equalizar
-            if (contentLength < 50) {
-                 contentSize = Math.min(contentSize, titleSize * 1.0); // Garante que o conteúdo não seja maior que o título
-                 contentSize = Math.max(contentSize, titleSize * 0.8); // Garante que o conteúdo seja no mínimo 80% do título
+            // Heurística de Equalização de Fontes (para títulos curtos com conteúdo curto)
+            // Se o conteúdo for relativamente curto (ex: menos de 50 caracteres), 
+            // garantimos que o tamanho do corpo seja significativo, até 90% do título
+            if (contentLength < 80) {
+                 contentSize = Math.min(contentSize, titleSize * 0.95); // Não muito maior que o título
+                 contentSize = Math.max(contentSize, titleSize * 0.70); // Pelo menos 70% do tamanho do título
             }
 
             // 3. Aplicação dos Estilos
             titleEl.style.fontSize = `${titleSize}px`;
             contentEl.style.fontSize = `${contentSize}px`;
 
-            console.log(`[Ajuste Fonte] Título: ${titleSize.toFixed(1)}px, Conteúdo: ${contentSize.toFixed(1)}px`);
+            console.log(`[Ajuste Fonte Otimizado] Título: ${titleSize.toFixed(1)}px, Conteúdo: ${contentSize.toFixed(1)}px`);
         }
 
 
@@ -503,7 +506,7 @@
                     titleEl.textContent = currentSlide.title; 
                     contentEl.textContent = currentSlide.content;
                     
-                    // CHAMA O AJUSTE AUTOMÁTICO DE FONTE
+                    // CHAMA O AJUSTE AUTOMÁTICO DE FONTE OTIMIZADO
                     adjustFontSize(currentSlide);
 
                     // Aplica a transição de fade-in
