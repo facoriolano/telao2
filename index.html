@@ -10,88 +10,39 @@
       color: #f0f0f0;
       margin: 20px;
     }
-    h1 {
-      color: #ffffff;
-      text-align: center;
-    }
+    h1 { color: #ffffff; text-align: center; }
     button, input[type="file"] {
-      background-color: #1f1f1f;
-      color: #f0f0f0;
-      border: 1px solid #444;
-      padding: 8px 12px;
-      margin: 5px;
-      cursor: pointer;
+      background-color: #1f1f1f; color: #f0f0f0;
+      border: 1px solid #444; padding: 8px 12px; margin: 5px; cursor: pointer;
     }
-    button:hover {
-      background-color: #333;
-    }
-    .container {
-      display: flex;
-      gap: 20px;
-      margin-top: 20px;
-    }
-    .col-esquerda {
-      flex: 1;
-    }
-    .col-direita {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
+    button:hover { background-color: #333; }
+    .container { display: flex; gap: 20px; margin-top: 20px; }
+    .col-esquerda { flex: 1; }
+    .col-direita { flex: 1; display: flex; flex-direction: column; gap: 20px; }
     #todosSlides {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      border: 1px solid #333;
-      padding: 10px;
-      min-height: 100px;
-      background-color: #1e1e1e;
+      display: flex; flex-wrap: wrap; gap: 10px;
+      border: 1px solid #333; padding: 10px; min-height: 100px; background-color: #1e1e1e;
     }
     .miniatura {
-      border: 2px solid #444;
-      padding: 10px;
-      background-color: #2a2a2a;
-      cursor: pointer;
-      width: 180px;
-      height: 120px;
-      overflow: hidden;
-      font-size: 12px;
-      box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
-      color: #ddd;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
+      border: 2px solid #444; padding: 10px; background-color: #2a2a2a; cursor: pointer;
+      width: 200px; height: 130px; overflow: hidden; font-size: 12px; box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+      color: #ddd; display: flex; flex-direction: column;
     }
-    .miniatura.ativa {
-      border-color: #00bfff;
-      box-shadow: 0 0 10px rgba(0,191,255,0.5);
-    }
+    .miniatura.ativa { border-color: #00bfff; box-shadow: 0 0 10px rgba(0,191,255,0.5); }
     .miniatura h4 {
-      margin: 0 0 5px 0;
-      font-size: 14px;
-      font-weight: bold;
-      color: #fff;
+      margin: 0 0 6px 0; font-size: 14px; font-weight: bold; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .miniatura p {
-      margin: 0;
-      font-size: 12px;
-      color: #ccc;
+      margin: 0; font-size: 12px; color: #ccc; line-height: 1.3;
+      display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden;
     }
-    .slideBox {
-      border: 1px solid #333;
-      padding: 10px;
-      min-height: 150px;
-      background-color: #1f1f1f;
-      color: #eee;
-    }
-    .section {
-      margin-bottom: 10px;
-    }
+    .slideBox { border: 1px solid #333; padding: 10px; min-height: 150px; background-color: #1f1f1f; color: #eee; white-space: pre-line; }
+    .section { margin-bottom: 10px; }
   </style>
 </head>
 <body>
   <h1>Apresentador Automático</h1>
+
   <input type="file" id="fileInput" accept=".txt">
   <button onclick="abrirTXT()">Abrir TXT</button>
 
@@ -100,14 +51,16 @@
       <h2>Todos Slides</h2>
       <div id="todosSlides"></div>
     </div>
+
     <div class="col-direita">
       <div class="section">
         <h2>Slide Atual</h2>
         <div id="slideAtual" class="slideBox"></div>
       </div>
+
       <div class="section">
         <h2>Próximo Slide</h2>
-        <div id="proximoSlide" class="slideBox"></div>
+        <div id="proximoSlide" class="slideBox">(O próximo slide irá aparecer aqui.)</div>
       </div>
     </div>
   </div>
@@ -130,6 +83,7 @@
         const texto = e.target.result;
         slides = texto.split('---').map(s => s.trim()).filter(s => s.length > 0);
         mostrarMiniaturas();
+        slideIndex = 0;
         atualizarTela();
         abrirJanelaApresentacao();
       };
@@ -142,12 +96,15 @@
 
       slides.forEach((slide, index) => {
         const linhas = slide.split('\n');
-        const titulo = linhas[0] || `Slide ${index + 1}`;
-        const corpo = linhas.slice(1).join(' ').slice(0, 80) + '...';
+        const titulo = (linhas[0] || `Slide ${index + 1}`).trim();
+        const corpo = linhas.slice(1).join(' ').trim();
 
         const miniatura = document.createElement('div');
         miniatura.className = 'miniatura';
-        miniatura.innerHTML = `<h4>${titulo}</h4><p>${corpo}</p>`;
+        miniatura.innerHTML = `
+          <h4>${escapeHTML(titulo)}</h4>
+          <p>${escapeHTML(corpo)}</p>
+        `;
         miniatura.onclick = () => {
           slideIndex = index;
           atualizarTela();
@@ -155,11 +112,15 @@
         };
         container.appendChild(miniatura);
       });
+
+      destacarMiniatura(slideIndex);
     }
 
     function atualizarTela() {
-      document.getElementById('slideAtual').innerText = slides[slideIndex] || '';
-      document.getElementById('proximoSlide').innerText = slides[slideIndex + 1] || '(Fim da apresentação)';
+      const atual = slides[slideIndex] || '';
+      const prox = slides[slideIndex + 1] || '';
+      document.getElementById('slideAtual').innerText = atual;
+      document.getElementById('proximoSlide').innerText = prox || '(Fim da apresentação)';
       destacarMiniatura(slideIndex);
     }
 
@@ -186,14 +147,8 @@
                   font-size: 28px;
                   line-height: 1.6;
                 }
-                h1 {
-                  color: #fdd835;
-                  font-size: 48px;
-                  margin-bottom: 40px;
-                }
-                p {
-                  font-size: 28px;
-                }
+                h1 { color: #fdd835; font-size: 48px; margin-bottom: 40px; }
+                p { font-size: 28px; }
               </style>
             </head>
             <body>
@@ -201,37 +156,69 @@
               <script>
                 let slides = [];
                 let slideIndex = 0;
+
                 function atualizarSlide() {
-                  const texto = slides[slideIndex].replace(/\\n/g, '<br>');
-                  const titulo = texto.split('<br>')[0];
-                  const corpo = texto.split('<br>').slice(1).join('<br>');
-                  document.getElementById('conteudo').innerHTML = '<h1>' + titulo + '</h1><p>' + corpo + '</p>';
+                  const texto = slides[slideIndex] || '';
+                  const html = texto.replace(/\\n/g, '<br>');
+                  const partes = html.split('<br>');
+                  const titulo = (partes[0] || '').trim();
+                  const corpo = partes.slice(1).join('<br>');
+                  document.getElementById('conteudo').innerHTML =
+                    '<h1>' + escapeHTML(titulo) + '</h1><p>' + corpo + '</p>';
                 }
+
+                function escapeHTML(str) {
+                  return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+                }
+
                 window.addEventListener('message', function(event) {
                   if (event.data && event.data.slides) {
                     slides = event.data.slides;
-                    slideIndex = event.data.slideIndex;
+                    slideIndex = event.data.slideIndex || 0;
                     atualizarSlide();
                   }
                 });
+
                 document.addEventListener('keydown', function(e) {
                   if (e.key === 'ArrowRight' && slideIndex < slides.length - 1) {
                     slideIndex++;
                     atualizarSlide();
-                    window.opener.postMessage({ slideIndex }, '*');
+                    window.opener && window.opener.postMessage({ slideIndex }, '*');
                   } else if (e.key === 'ArrowLeft' && slideIndex > 0) {
                     slideIndex--;
                     atualizarSlide();
-                    window.opener.postMessage({ slideIndex }, '*');
+                    window.opener && window.opener.postMessage({ slideIndex }, '*');
                   }
                 });
-                window.opener.postMessage({ ready: true }, '*');
+
+                // sinaliza pronto
+                window.opener && window.opener.postMessage({ ready: true }, '*');
+
+                // util: evita erro se opener fechar
+                window.addEventListener('unload', () => {
+                  window.opener && window.opener.postMessage({ closed: true }, '*');
+                });
+
+                function escapeHTML(str) {
+                  return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+                }
               <\/script>
             </body>
           </html>
         `);
         popupWindow.document.close();
-        setTimeout(() => enviarSlideParaJanela(), 500);
+        // dá tempo para a janela registrar o listener
+        setTimeout(() => enviarSlideParaJanela(), 300);
       } else {
         alert('Pop-up bloqueado. Ative pop-ups para visualizar os slides no telão.');
       }
@@ -243,6 +230,7 @@
       }
     }
 
+    // Navegação no diretor
     document.addEventListener('keydown', function(e) {
       if (slides.length === 0) return;
       if (e.key === 'ArrowRight' && slideIndex < slides.length - 1) {
@@ -256,6 +244,23 @@
       }
     });
 
+    // Recebe atualização de índice do telão
     window.addEventListener('message', function(event) {
       if (event.data && typeof event.data.slideIndex === 'number') {
-        slideIndex =
+        slideIndex = event.data.slideIndex;
+        atualizarTela();
+      }
+    });
+
+    // Utilidades
+    function escapeHTML(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+  </script>
+</body>
+</html>
