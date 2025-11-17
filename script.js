@@ -19,20 +19,40 @@ function startPresentation() {
 }
 
 function splitTextIntoSlides(text) {
+  const container = document.createElement('div');
+  container.style.position = 'absolute';
+  container.style.visibility = 'hidden';
+  container.style.fontSize = '60px';
+  container.style.width = '800px';
+  container.style.lineHeight = '1.2';
+  container.style.fontFamily = 'Segoe UI, sans-serif';
+  document.body.appendChild(container);
+
   const words = text.split(/\s+/);
   const slides = [];
   let current = [];
 
-  words.forEach(word => {
-    current.push(word);
-    if (current.length >= 60) {
+  for (let i = 0; i < words.length; i++) {
+    current.push(words[i]);
+    container.innerText = current.join(' ');
+    if (container.scrollHeight > 600) {
+      current.pop(); // remove last word that overflowed
       slides.push(current.join(' '));
-      current = [];
+      current = [words[i]]; // start new slide with overflow word
     }
-  });
-  if (current.length) slides.push(current.join(' '));
+  }
+
+  if (current.length) {
+    container.innerText = current.join(' ');
+    if (container.scrollHeight <= 600) {
+      slides.push(current.join(' '));
+    }
+  }
+
+  document.body.removeChild(container);
   return slides;
 }
+
 
 function showPreview() {
   document.getElementById('slidePreview').innerText = slides.map((s, i) => `Slide ${i + 1}:\n${s}\n`).join('\n');
