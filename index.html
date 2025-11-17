@@ -389,38 +389,38 @@
             if (!titleEl || !contentEl || !screen) return;
 
             // 1. Coleta métricas da tela e do texto
-            const screenHeight = screen.clientHeight;
             const screenWidth = screen.clientWidth;
             const titleLength = slide.title.length;
             const contentLength = slide.content.length;
             const totalLength = titleLength + contentLength;
 
-            // Fatores de Ponderação (ajustáveis para equilibrar título vs corpo)
-            const titleWeight = 0.6; // Título deve ser significativamente maior
-            const contentWeight = 0.4; 
-
-            // Fator de densidade para garantir que o texto não fique 'grudado' ou muito pequeno
-            // Valores entre 100 e 200 tendem a funcionar bem.
-            const densityFactor = 150; 
-            
-            // Heurística de Tamanho Base (usando a raiz quadrada do total de caracteres para suavizar o ajuste)
-            // O fator 80000 é um valor que tenta escalar a fonte para um tamanho base razoável na tela.
-            let baseFontSize = Math.min(screenWidth / (totalLength / 25), screenHeight / 10);
-            baseFontSize = Math.max(20, baseFontSize); // Mínimo de 20px para legibilidade
+            // Fatores de Ponderação (ajustados para EQUALIZAR as fontes)
+            // Título: Pequeno peso (0.3) para garantir que títulos curtos fiquem grandes
+            // Conteúdo: Peso maior (0.7) para garantir que o corpo do texto se aproxime do título
+            const titleWeight = 0.3; 
+            const contentWeight = 0.7; 
 
             // 2. Cálculo dos Tamanhos Finais
             
-            // Ajuste do Título: Inversamente proporcional ao tamanho do texto
-            // Títulos curtos ficam maiores (até 15vw), títulos longos ficam menores
+            // Heurística de Tamanho Base (inversamente proporcional ao tamanho total do texto)
+            // O divisor (totalLength / 20) é ajustado para tornar a fonte base maior em geral.
+            let baseSize = Math.max(screenWidth / (totalLength / 20), 40);
+
+            // Ajuste do Título: Inversamente proporcional ao tamanho do texto (mas com limite alto)
             let titleSize = screenWidth / (titleLength * titleWeight);
-            titleSize = Math.min(titleSize, screenWidth * 0.08); // Limite máximo para o título (8vw)
-            titleSize = Math.max(titleSize, 40); // Limite mínimo
+            // Limite máximo para o título: 8vw
+            titleSize = Math.min(titleSize, screenWidth * 0.08); 
+            // Limite mínimo
+            titleSize = Math.max(titleSize, 40); 
 
-            // Ajuste do Conteúdo: Inversamente proporcional ao tamanho do texto
-            let contentSize = screenWidth / (contentLength * contentWeight);
-            contentSize = Math.min(contentSize, screenWidth * 0.035); // Limite máximo para o corpo (3.5vw)
-            contentSize = Math.max(contentSize, 18); // Limite mínimo
-
+            // Ajuste do Conteúdo (AQUI ESTÁ A MUDANÇA):
+            // Usa o 'titleWeight' para manter a proporção mais próxima, mas com o limite máximo mais alto
+            let contentSize = screenWidth / (contentLength * titleWeight);
+            // Novo Limite máximo para o corpo: 5vw (anteriormente 3.5vw)
+            contentSize = Math.min(contentSize, screenWidth * 0.05); 
+            // Limite mínimo
+            contentSize = Math.max(contentSize, 30); 
+            
             // 3. Aplicação dos Estilos
             titleEl.style.fontSize = `${titleSize}px`;
             contentEl.style.fontSize = `${contentSize}px`;
@@ -918,7 +918,7 @@
                     console.error("Falha na inicialização/autenticação do Firebase. Usando LocalStorage.", error);
                     isFirebaseAvailable = false;
                     document.getElementById('voice-status').textContent = 'Voz: ERRO de Listener. Usando LocalStorage.';
-                    document.getElementById('voice-status').classList.remove('text-red-400');
+                    document.getElementById('voice-status').classList.remove('text-green-500');
                     document.getElementById('voice-status').classList.add('text-yellow-500');
                 }
             } else {
