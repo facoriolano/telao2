@@ -26,6 +26,10 @@ function splitTextIntoSlides(text) {
   container.style.width = '800px';
   container.style.lineHeight = '1.2';
   container.style.fontFamily = 'Segoe UI, sans-serif';
+  container.style.whiteSpace = 'normal';
+  container.style.wordWrap = 'break-word';
+  container.style.padding = '0';
+  container.style.margin = '0';
   document.body.appendChild(container);
 
   const words = text.split(/\s+/);
@@ -53,7 +57,6 @@ function splitTextIntoSlides(text) {
   return slides;
 }
 
-
 function showPreview() {
   document.getElementById('slidePreview').innerText = slides.map((s, i) => `Slide ${i + 1}:\n${s}\n`).join('\n');
 }
@@ -72,6 +75,8 @@ function openProjectionWindow() {
   projectionWindow.document.body.style.justifyContent = 'center';
   projectionWindow.document.body.style.alignItems = 'center';
   projectionWindow.document.body.style.height = '100vh';
+  projectionWindow.document.body.style.padding = '2rem';
+  projectionWindow.document.body.style.boxSizing = 'border-box';
   projectionWindow.document.body.innerText = slides[currentSlide];
 }
 
