@@ -10,125 +10,140 @@
     #presenter-screen { height: 100vh; width: 100vw; }
     #presenter-content { white-space: pre-wrap; font-size: 60px; line-height: 1.3; }
     .thumbnail-item { min-width: 160px; }
-    .line-clamp-2 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
   </style>
 </head>
-<body class="bg-gray-950 min-h-screen text-gray-100">
+<body class="bg-gray-950 text-gray-100">
 
-  <!-- Interface Diretor -->
-  <div id="director-interface" class="p-6 md:p-10 max-w-4xl mx-auto bg-gray-900 rounded-xl shadow-2xl">
-    <h1 class="text-3xl font-bold mb-4 text-indigo-400">Modo Diretor</h1>
-    <p class="mb-6 text-gray-400">Carregue slides e controle por voz.</p>
+<div id="director-interface" class="p-6 max-w-4xl mx-auto bg-gray-900 rounded-xl shadow-2xl">
+  <h1 class="text-3xl font-bold mb-4 text-indigo-400">Modo Diretor</h1>
+  <p class="mb-6 text-gray-400">Carregue slides e controle por voz.</p>
 
-    <div class="mb-8 p-4 bg-gray-800 rounded-lg">
-      <h2 class="text-xl font-semibold mb-3 text-white">Carregar Apresentação (.txt)</h2>
-      <input type="file" id="file-input" accept=".txt" class="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-500 file:text-white hover:file:bg-indigo-600"/>
-      <p class="text-xs text-gray-400 mt-2">Separe slides com linha em branco.</p>
-    </div>
-
-    <div class="flex items-center space-x-4 mb-8">
-      <button id="open-presenter-btn" class="px-6 py-3 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600">Abrir Tela do Apresentador</button>
-      <button id="start-voice-btn" class="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-400" disabled>Iniciar Reconhecimento</button>
-    </div>
-
-    <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
-      <h2 class="text-xl font-semibold mb-3 text-gray-200">Estado</h2>
-      <p id="voice-status" class="text-red-400 font-medium mb-4">Reconhecimento de Voz: Desligado</p>
-      <p id="current-slide-info" class="text-lg font-bold mb-2 text-white">Slide Atual: Carregando...</p>
-      <p id="expected-trigger" class="text-sm text-yellow-500">Próximo gatilho: N/A</p>
-      <p id="last-transcript" class="text-sm mt-2 p-2 bg-gray-700 rounded">Última Transcrição: Aguardando fala...</p>
-    </div>
-
-    <div class="mt-8 pt-4 border-t border-gray-800">
-      <h2 class="text-xl font-semibold mb-3 text-gray-200">Miniaturas</h2>
-      <div id="thumbnails-container" class="flex flex-wrap gap-4 overflow-x-auto p-2"></div>
-    </div>
-
-    <div class="mt-8 pt-4 border-t border-gray-800">
-      <h2 class="text-xl font-semibold mb-3 text-gray-200">Controle Manual</h2>
-      <div class="flex space-x-3">
-        <button id="prev-slide-btn" class="px-4 py-2 bg-gray-700 text-gray-100 rounded-lg hover:bg-gray-600 disabled:opacity-50" disabled>Anterior</button>
-        <button id="next-slide-btn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50" disabled>Próximo</button>
-      </div>
-    </div>
+  <div class="mb-6 bg-gray-800 p-4 rounded">
+    <input type="file" id="file-input" accept=".txt" class="block w-full text-sm text-gray-300 file:bg-indigo-500 file:text-white file:rounded-full file:px-4 file:py-2"/>
+    <p class="text-xs text-gray-400 mt-2">Separe slides com linha em branco.</p>
   </div>
 
-  <!-- Interface Apresentador -->
-  <div id="presenter-interface" class="hidden">
-    <div id="presenter-screen" class="flex flex-col items-center justify-center p-10 text-white bg-black">
-      <div class="max-w-6xl w-full">
-        <p id="slide-index-display" class="text-3xl font-light text-indigo-400 mb-6"></p>
-        <h1 id="slide-title" class="text-7xl font-extrabold mb-10 text-center text-yellow-300">Carregando...</h1>
-        <div id="presenter-content" class="text-gray-200 text-center">Aguardando...</div>
-      </div>
-    </div>
+  <div class="flex gap-4 mb-6">
+    <button id="open-presenter-btn" class="px-6 py-3 bg-indigo-500 text-white rounded hover:bg-indigo-600">Abrir Tela do Apresentador</button>
+    <button id="start-voice-btn" class="px-6 py-3 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400" disabled>Iniciar Reconhecimento</button>
   </div>
 
-  <script>
-    let slidesData = [];
-    let currentSlideIndex = 0;
-    let recognition = null;
+  <div class="bg-gray-800 p-4 rounded mb-6">
+    <p id="voice-status" class="text-red-400 font-medium mb-2">Reconhecimento de Voz: Desligado</p>
+    <p id="current-slide-info" class="text-white font-bold mb-1">Slide Atual: Carregando...</p>
+    <p id="expected-trigger" class="text-yellow-500 text-sm mb-1">Próximo gatilho: N/A</p>
+    <p id="last-transcript" class="text-sm bg-gray-700 p-2 rounded">Última Transcrição: Aguardando...</p>
+  </div>
 
-    function generateTrigger(text, wordCount = 4) {
-      if (!text) return "";
-      const words = text.replace(/[^\p{L}\s]/gu, "").trim().split(/\s+/);
-      return words.slice(-wordCount).join(" ") + ".";
+  <div id="thumbnails-container" class="flex flex-wrap gap-4 mb-6"></div>
+
+  <div class="flex gap-3">
+    <button id="prev-slide-btn" class="px-4 py-2 bg-gray-700 text-white rounded disabled:opacity-50" disabled>Anterior</button>
+    <button id="next-slide-btn" class="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50" disabled>Próximo</button>
+  </div>
+</div>
+
+<div id="presenter-interface" class="hidden">
+  <div id="presenter-screen" class="flex flex-col items-center justify-center p-10 text-white bg-black">
+    <div class="max-w-6xl w-full">
+      <p id="slide-index-display" class="text-3xl text-indigo-400 mb-6"></p>
+      <h1 id="slide-title" class="text-7xl font-extrabold mb-10 text-yellow-300 text-center">Carregando...</h1>
+      <div id="presenter-content" class="text-center text-gray-200">Aguardando...</div>
+    </div>
+  </div>
+</div>
+<script>
+let slidesData = [];
+let currentSlideIndex = 0;
+let recognition = null;
+
+function generateTrigger(text) {
+  const words = text.replace(/[^\p{L}\s]/gu, "").trim().split(/\s+/);
+  return words.slice(-4).join(" ") + ".";
+}
+
+function updateUI(index) {
+  currentSlideIndex = index;
+  const slide = slidesData[index];
+  document.getElementById('current-slide-info').textContent = `Slide Atual: ${index+1} - ${slide.title}`;
+  document.getElementById('expected-trigger').textContent = slide.trigger ? `Próximo gatilho: "${slide.trigger}"` : "Fim";
+  document.getElementById('slide-title').textContent = slide.title;
+  document.getElementById('presenter-content').textContent = slide.content;
+  document.getElementById('slide-index-display').textContent = `Slide ${index+1} de ${slidesData.length}`;
+  renderThumbnails();
+  document.getElementById('prev-slide-btn').disabled = (index === 0);
+  document.getElementById('next-slide-btn').disabled = (index === slidesData.length - 1);
+}
+
+function renderThumbnails() {
+  const container = document.getElementById('thumbnails-container');
+  container.innerHTML = '';
+  slidesData.forEach((s, i) => {
+    const thumb = document.createElement('div');
+    thumb.className = `thumbnail-item p-3 border-2 rounded cursor-pointer ${i===currentSlideIndex ? 'border-indigo-400' : 'border-gray-700'}`;
+    thumb.innerHTML = `<h3 class="text-sm font-semibold text-white">${i+1}. ${s.title}</h3>
+                       <p class="text-xs text-gray-400">${s.content.substring(0,40)}...</p>
+                       <p class="text-xs text-yellow-500">${s.trigger || 'FIM'}</p>`;
+    thumb.onclick = () => updateUI(i);
+    container.appendChild(thumb);
+  });
+}
+
+function initializeSpeechRecognition() {
+  if (!('webkitSpeechRecognition' in window)) {
+    document.getElementById('voice-status').textContent = "ERRO: Navegador não suporta reconhecimento de voz.";
+    return;
+  }
+  recognition = new webkitSpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = false;
+  recognition.lang = 'pt-BR';
+
+  recognition.onstart = () => document.getElementById('voice-status').textContent = "Reconhecimento de Voz: ATIVO";
+  recognition.onend = () => document.getElementById('voice-status').textContent = "Reconhecimento de Voz: Desligado";
+  recognition.onresult = (event) => {
+    const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
+    document.getElementById('last-transcript').textContent = `Última Transcrição: "${transcript}"`;
+    const nextSlideIndex = currentSlideIndex + 1;
+    const expectedTrigger = slidesData[nextSlideIndex]?.trigger?.toLowerCase().trim();
+    if (expectedTrigger && transcript.includes(expectedTrigger)) {
+      updateUI(nextSlideIndex);
     }
+  };
+}
 
-    function updateUI(index) {
-      currentSlideIndex = index;
-      const slide = slidesData[index];
-      document.getElementById('current-slide-info').textContent = `Slide Atual: ${index+1} - ${slide.title}`;
-      document.getElementById('expected-trigger').textContent = slide.trigger ? `Próximo gatilho: "${slide.trigger}"` : "Fim";
-      document.getElementById('slide-title').textContent = slide.title;
-      document.getElementById('presenter-content').textContent = slide.content;
-      document.getElementById('slide-index-display').textContent = `Slide ${index+1} de ${slidesData.length}`;
-      renderThumbnails();
-      document.getElementById('prev-slide-btn').disabled = (index === 0);
-      document.getElementById('next-slide-btn').disabled = (index === slidesData.length-1);
-    }
+document.getElementById('file-input').addEventListener('change', (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const text = e.target.result;
+    const blocks = text.split(/\n\s*\n/).filter(block => block.trim().length > 0);
+    slidesData = blocks.map((content, i) => {
+      const title = content.split('\n')[0].trim();
+      const trigger = (i < blocks.length - 1) ? generateTrigger(content) : "";
+      return { title, content: content.trim(), trigger };
+    });
+    updateUI(0);
+    document.getElementById('start-voice-btn').disabled = false;
+  };
+  reader.readAsText(file);
+});
 
-    function renderThumbnails() {
-      const container = document.getElementById('thumbnails-container');
-      container.innerHTML = '';
-      slidesData.forEach((s, i) => {
-        const thumb = document.createElement('div');
-        thumb.className = `thumbnail-item p-3 border-2 rounded-lg cursor-pointer ${i===currentSlideIndex ? 'border-indigo-400' : 'border-gray-700'}`;
-        thumb.innerHTML = `<h3 class="text-sm font-semibold text-white">${i+1}. ${s.title}</h3>
-                           <p class="text-xs text-gray-400">${s.content.substring(0,40)}...</p>
-                           <p class="text-xs text-yellow-500">${s.trigger || 'FIM'}</p>`;
-        thumb.onclick = () => updateUI(i);
-        container.appendChild(thumb);
-      });
-    }
+document.getElementById('start-voice-btn').addEventListener('click', () => {
+  if (recognition) recognition.start();
+});
 
-    function initializeSpeechRecognition() {
-      if (!('webkitSpeechRecognition' in window)) {
-        document.getElementById('voice-status').textContent = "ERRO: Navegador não suporta reconhecimento de voz.";
-        return;
-      }
-      recognition = new webkitSpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = false;
-      recognition.lang = 'pt-BR';
+document.getElementById('prev-slide-btn').addEventListener('click', () => {
+  if (currentSlideIndex > 0) updateUI(currentSlideIndex - 1);
+});
+document.getElementById('next-slide-btn').addEventListener('click', () => {
+  if (currentSlideIndex < slidesData.length - 1) updateUI(currentSlideIndex + 1);
+});
 
-      recognition.onstart = () => document.getElementById('voice-status').textContent = "Reconhecimento de Voz: ATIVO";
-      recognition.onend = () => document.getElementById('voice-status').textContent = "Reconhecimento de Voz: Desligado";
-      recognition.onresult = (event) => {
-        const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
-        document.getElementById('last-transcript').textContent = `Última Transcrição: "${transcript}"`;
-        const nextSlideIndex = currentSlideIndex + 1;
-        const expectedTrigger = slidesData[nextSlideIndex]?.trigger?.toLowerCase().trim();
-        if (expectedTrigger && transcript.includes(expectedTrigger)) {
-          updateUI(nextSlideIndex);
-        }
-      };
-    }
+document.getElementById('open-presenter-btn').addEventListener('click', () => {
+  const presenterUrl = window.location.href.split('?')[0] + '?mode=presenter';
+  window.open(presenterUrl, 'PresenterScreen', 'width=800,height=600,resizable=yes');
+});
 
-    document.getElementById('file-input').addEventListener('change', (event) => {
-      const file = event.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const text = e.target.result;
-        const blocks = text.split(/\n\s*\n/).filter(block => block
+window.addEventListener('load', ()
