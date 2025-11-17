@@ -184,68 +184,53 @@
     }
 
     function abrirPopup() {
-      if (popupWindow && !popupWindow.closed) {
-        popupWindow.focus();
-        popupWindow.postMessage({ slideIndex, slides }, '*');
-        return;
-      }
+  const texto = slides[slideIndex];
+  const popup = window.open('', '', 'width=800,height=600');
+  if (popup) {
+    popup.document.write(`
+      <html>
+        <head>
+          <title>Slide Atual</title>
+          <style>
+            body {
+              background-color: #121212;
+              color: #f0f0f0;
+              font-family: Arial, sans-serif;
+              padding: 40px;
+              font-size: 28px;
+              line-height: 1.5;
+            }
+          </style>
+        </head>
+        <body>
+          <div id="conteudo">${texto.replace(/\n/g, '<br>')}</div>
+          <script>
+            const slides = ${JSON.stringify(slides)};
+            let slideIndex = ${slideIndex};
 
-      popupWindow = window.open('', '', 'width=800,height=600');
-      if (popupWindow) {
-        popupWindow.document.write(`
-          <html>
-            <head>
-              <title>Slide Atual</title>
-              <style>
-                body {
-                  background-color: #121212;
-                  color: #f0f0f0;
-                  font-family: Arial, sans-serif;
-                  padding: 40px;
-                  font-size: 28px;
-                  line-height: 1.5;
-                }
-              </style>
-            </head>
-            <body>
-              <div id="conteudo"></div>
-              <script>
-                let slides = [];
-                let slideIndex = 0;
+            function atualizarSlide() {
+              document.getElementById('conteudo').innerHTML = slides[slideIndex].replace(/\\n/g, '<br>');
+            }
 
-                function atualizarSlide() {
-                  document.getElementById('conteudo').innerHTML = slides[slideIndex].replace(/\\n/g, '<br>');
-                }
+            document.addEventListener('keydown', function(e) {
+              if (e.key === 'ArrowRight' && slideIndex < slides.length - 1) {
+                slideIndex++;
+                atualizarSlide();
+              } else if (e.key === 'ArrowLeft' && slideIndex > 0) {
+                slideIndex--;
+                atualizarSlide();
+              }
+            });
+          <\/script>
+        </body>
+      </html>
+    `);
+    popup.document.close();
+  } else {
+    alert('Pop-up bloqueado. Ative pop-ups para visualizar o slide.');
+  }
+}
 
-                window.addEventListener('message', function(event) {
-                  if (event.data.slides) {
-                    slides = event.data.slides;
-                    slideIndex = event.data.slideIndex;
-                    atualizarSlide();
-                  }
-                });
-
-                document.addEventListener('keydown', function(e) {
-                  if (e.key === 'ArrowRight' && slideIndex < slides.length - 1) {
-                    slideIndex++;
-                    atualizarSlide();
-                  } else if (e.key === 'ArrowLeft' && slideIndex > 0) {
-                    slideIndex--;
-                    atualizarSlide();
-                  }
-                });
-              <\/script>
-            </body>
-          </html>
-        `);
-        popupWindow.document.close();
-        setTimeout(() => {
-          popupWindow.postMessage({ slideIndex, slides }, '*');
-        }, 500);
-      } else {
-        alert('Pop-up bloqueado. Ative pop-ups para visualizar o slide.');
-      }
-    }
 
     document.addEventListener('keydown', function(e) {
       if (slides.length === 0) return;
