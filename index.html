@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Apresentação por Voz</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -20,20 +20,17 @@
     <h1 class="text-3xl font-bold mb-4 text-indigo-400">Modo Diretor</h1>
     <p class="mb-6 text-gray-400">Carregue slides e controle por voz.</p>
 
-    <!-- Upload -->
     <div class="mb-8 p-4 bg-gray-800 rounded-lg">
       <h2 class="text-xl font-semibold mb-3 text-white">Carregar Apresentação (.txt)</h2>
       <input type="file" id="file-input" accept=".txt" class="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-500 file:text-white hover:file:bg-indigo-600"/>
       <p class="text-xs text-gray-400 mt-2">Separe slides com linha em branco.</p>
     </div>
 
-    <!-- Botões -->
     <div class="flex items-center space-x-4 mb-8">
       <button id="open-presenter-btn" class="px-6 py-3 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600">Abrir Tela do Apresentador</button>
       <button id="start-voice-btn" class="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-400" disabled>Iniciar Reconhecimento</button>
     </div>
 
-    <!-- Estado -->
     <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
       <h2 class="text-xl font-semibold mb-3 text-gray-200">Estado</h2>
       <p id="voice-status" class="text-red-400 font-medium mb-4">Reconhecimento de Voz: Desligado</p>
@@ -42,13 +39,11 @@
       <p id="last-transcript" class="text-sm mt-2 p-2 bg-gray-700 rounded">Última Transcrição: Aguardando fala...</p>
     </div>
 
-    <!-- Miniaturas -->
     <div class="mt-8 pt-4 border-t border-gray-800">
       <h2 class="text-xl font-semibold mb-3 text-gray-200">Miniaturas</h2>
       <div id="thumbnails-container" class="flex flex-wrap gap-4 overflow-x-auto p-2"></div>
     </div>
 
-    <!-- Navegação Manual -->
     <div class="mt-8 pt-4 border-t border-gray-800">
       <h2 class="text-xl font-semibold mb-3 text-gray-200">Controle Manual</h2>
       <div class="flex space-x-3">
@@ -58,7 +53,7 @@
     </div>
   </div>
 
-  <!-- Apresentador -->
+  <!-- Interface Apresentador -->
   <div id="presenter-interface" class="hidden">
     <div id="presenter-screen" class="flex flex-col items-center justify-center p-10 text-white bg-black">
       <div class="max-w-6xl w-full">
@@ -70,21 +65,16 @@
   </div>
 
   <script>
-    // --- Estado ---
-    let slidesData = [
-      { title: "Início", content: "Olá a todos! Este é um teste.", trigger: "este é um teste." },
-      { title: "Slide 2", content: "A tecnologia está aqui para ajudar.", trigger: "aqui para ajudar." },
-      { title: "Fim", content: "Obrigado pela atenção!", trigger: "" }
-    ];
+    let slidesData = [];
     let currentSlideIndex = 0;
     let recognition = null;
 
-    // --- Utilitários ---
     function generateTrigger(text, wordCount = 4) {
       if (!text) return "";
       const words = text.replace(/[^\p{L}\s]/gu, "").trim().split(/\s+/);
       return words.slice(-wordCount).join(" ") + ".";
     }
+
     function updateUI(index) {
       currentSlideIndex = index;
       const slide = slidesData[index];
@@ -97,6 +87,7 @@
       document.getElementById('prev-slide-btn').disabled = (index === 0);
       document.getElementById('next-slide-btn').disabled = (index === slidesData.length-1);
     }
+
     function renderThumbnails() {
       const container = document.getElementById('thumbnails-container');
       container.innerHTML = '';
@@ -111,7 +102,6 @@
       });
     }
 
-    // --- Reconhecimento de Voz ---
     function initializeSpeechRecognition() {
       if (!('webkitSpeechRecognition' in window)) {
         document.getElementById('voice-status').textContent = "ERRO: Navegador não suporta reconhecimento de voz.";
@@ -135,9 +125,10 @@
       };
     }
 
-    // --- Eventos ---
-    window.addEventListener('load', () => {
-      updateUI(0);
-      renderThumbnails();
-      initializeSpeechRecognition();
-
+    document.getElementById('file-input').addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target.result;
+        const blocks = text.split(/\n\s*\n/).filter(block => block
