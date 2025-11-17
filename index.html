@@ -377,7 +377,7 @@
             return doc(db, 'artifacts', appId, 'public', 'data', 'presentation_state', 'current_slide');
         };
 
-        // --- FUNÇÃO DE AJUSTE AUTOMÁTICO DE FONTE (UNIFORME E OTIMIZADA) ---
+        // --- FUNÇÃO DE AJUSTE AUTOMÁTICO DE FONTE (COM MÍNIMO DE 60PX) ---
 
         /**
          * Ajusta o tamanho da fonte do título e do conteúdo para o MESMO tamanho,
@@ -393,43 +393,41 @@
 
             // 1. Coleta métricas da tela e do texto
             const screenWidth = screen.clientWidth;
-            const screenHeight = screen.clientHeight;
             // O padding vertical total é 10vh (5vh em cima + 5vh em baixo)
-            const availableHeight = screenHeight * 0.9; 
+            // const availableHeight = screenHeight * 0.9; // Removido, foco no tamanho da fonte uniforme pelo comprimento
             
             // Texto total
             const fullText = slide.title + ' ' + slide.content;
 
             // Ponderação: Ajustado para ser inversamente proporcional ao comprimento do texto
-            // e também considerar a altura da tela, mas com foco principal no comprimento para uniformizar.
             const characterLength = fullText.length;
             
-            // Fator de ajuste experimental (diminuído para evitar o "cada vez maior")
-            // Baseado em um compromisso entre largura e comprimento.
+            // Fator de ajuste experimental
+            // A largura do texto é estimada por: (caracteres * tamanho da fonte)
+            // Para caber na largura, o tamanho deve ser inversamente proporcional à raiz quadrada do comprimento do texto.
             let uniformSize = (screenWidth * 0.6) / Math.sqrt(characterLength); 
 
-            // 2. Limites Visuais (Aplicando o MESMO limite superior e inferior)
-            // Limite superior baseado na largura (por exemplo, 7vw)
-            const MAX_SIZE_VW_FACTOR = 0.07; 
-            // Limite mínimo
-            const MIN_SIZE_PX = 30; 
+            // 2. Limites Visuais
+            const MAX_SIZE_VW_FACTOR = 0.07; // Limite superior
+            
+            // NOVO: Tamanho mínimo forçado em pixels (para atender o pedido de 'fonte 60')
+            const MIN_SIZE_PX = 60; 
 
             // Limite o tamanho pela largura da tela
             uniformSize = Math.min(uniformSize, screenWidth * MAX_SIZE_VW_FACTOR);
-            // Garante o tamanho mínimo
-            uniformSize = Math.max(uniformSize, MIN_SIZE_PX);
+            
+            // Garante o tamanho MÍNIMO de 60px
+            // Se o texto for muito curto, ele será grande (até o máximo). 
+            // Se o texto for muito longo, ele será pequeno (mas nunca menos que 60px, a menos que estoure).
+            // NOTA: Se o texto for muito longo e forçar um tamanho menor que 60px para caber,
+            // o 60px será o novo limite, e o texto pode estourar (que é o comportamento esperado se a fonte for "fixa").
+            uniformSize = Math.max(uniformSize, MIN_SIZE_PX); 
             
             // 3. Aplicação dos Estilos (Aplicando o MESMO tamanho para título e conteúdo)
-            // NOTA: Para garantir a UNIFORMIDADE total e evitar que o título grande force
-            // um tamanho pequeno no conteúdo, estamos aplicando o mesmo tamanho calculado para ambos.
             titleEl.style.fontSize = `${uniformSize}px`;
             contentEl.style.fontSize = `${uniformSize}px`;
 
-            // Opcional: Checagem de Overflow (Mais complexa em JS puro, mas a lógica acima tenta evitar)
-            // Se o texto ainda assim estourar, a fonte será diminuída um pouco mais (apenas como fallback de segurança)
-            // Esta checagem é aproximada e foca em limitar o tamanho máximo para evitar estouro.
-            
-            console.log(`[Ajuste Fonte UNIFORME] Tamanho Final: ${uniformSize.toFixed(1)}px`);
+            console.log(`[Ajuste Fonte UNIFORME] Tamanho Final: ${uniformSize.toFixed(1)}px (Mínimo 60px)`);
         }
 
 
